@@ -25,17 +25,13 @@ if __name__ == "__main__": main()
 
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-bgr_img = cv2.imread('test_image.png', 0)
-gray_img = cv2.imread('test_image.png', cv2.IMREAD_GRAYSCALE)
-# gray_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
+gray_img = cv2.imread('test_image.png', cv2.IMREAD_GRAYSCALE) # default has color
 cv2.imwrite('test_image_grayscale.jpg',gray_img)
 
-arr = np.asarray(bgr_img)
-arr = np.asarray(gray_img)
-
-plt.imshow(gray_img, cmap = plt.get_cmap('gray'))
+'''
+plt.imshow(bgr_img, cmap = plt.get_cmap('gray'))
 plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
 plt.show()
 
@@ -44,3 +40,4 @@ while True:
     if k == 27: break            # Code for the ESC key
 
 cv2.destroyAllWindows()
+'''
