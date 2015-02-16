@@ -1,28 +1,3 @@
-'''
-import argparse
-
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--image", required = True,
-	help = "Path to the image to be scanned")
-args = vars(ap.parse_args())
-'''
-
-'''def main():
-    # sequence = map(str, raw_input('Please enter your sequence ').split(' '))
-    img = cv2.imread('fist-center.jpg',0)
-    k = cv2.waitKey(0)
-
-    if k == 27:         # wait for ESC key to exit
-        cv2.destroyAllWindows()
-    elif k == ord('s'): # wait for 's' key to save and exit
-        cv2.imwrite('messigray.png',img)
-        cv2.destroyAllWindows()
-
-if __name__ == "__main__": main()
-
-'''
-
 import cv2, os, sys
 import numpy as np
 # import matplotlib.pyplot as plt
@@ -47,10 +22,23 @@ if os.path.exists(path):
         center = (w / 2, h / 2)
         M = cv2.getRotationMatrix2D(center, 270, 1.0)
         image = cv2.warpAffine(image, M, (w, h))
+        # invert colors
+        image = (255-image)
+        # find otsu's threshold value with median blurring
+        blur = cv2.medianBlur(image, 5) # cv2.GaussianBlur(image,(5,5),0)
+        ret,thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        image = thresh
+        # apply morphological closing to close holes
+        kernel = np.ones((5,5), np.uint8)
+        image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
+        # canny edge detection: performs gaussian filter, intensity gradient,
+        # non-max suppression, hysteresis thresholding all at once
+        image = cv2.Canny(image,100,200) # params: min, max vals
         cv2.imshow('Image', image) # finally, show the image
         cv2.waitKey(1000)
 else:
 	sys.exit("The path name does not exist")
+
 '''
 plt.imshow(bgr_img, cmap = plt.get_cmap('gray'))
 plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
@@ -61,4 +49,29 @@ while True:
     if k == 27: break            # Code for the ESC key
 
 cv2.destroyAllWindows()
+'''
+
+'''
+import argparse
+
+# construct the argument parser and parse the arguments
+ap = argparse.ArgumentParser()
+ap.add_argument("-i", "--image", required = True,
+	help = "Path to the image to be scanned")
+args = vars(ap.parse_args())
+'''
+
+'''def main():
+    # sequence = map(str, raw_input('Please enter your sequence ').split(' '))
+    img = cv2.imread('fist-center.jpg',0)
+    k = cv2.waitKey(0)
+
+    if k == 27:         # wait for ESC key to exit
+        cv2.destroyAllWindows()
+    elif k == ord('s'): # wait for 's' key to save and exit
+        cv2.imwrite('messigray.png',img)
+        cv2.destroyAllWindows()
+
+if __name__ == "__main__": main()
+
 '''
