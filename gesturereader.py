@@ -5,6 +5,10 @@ import numpy as np
 gray_img = cv2.imread('test_image.png', cv2.IMREAD_GRAYSCALE) # default has color
 cv2.imwrite('test_image_grayscale.jpg',gray_img)
 
+def showImageWithDelay(img, wait):
+	cv2.waitKey(wait)
+	cv2.imshow('Image', img)
+
 imageformat=".JPG"
 path = "./" + sys.argv[1]
 # path="./images"
@@ -12,7 +16,7 @@ if os.path.exists(path):
     imfilelist=[os.path.join(path,f) for f in os.listdir(path) if f.endswith(imageformat)]
     for el in imfilelist:
         print el
-        image = cv2.imread(el, cv2.IMREAD_GRAYSCALE)
+        image = cv2.imread(el, cv2.IMREAD_COLOR)
         # resize image - calculate aspect ratio first
         r = 300.0 / image.shape[1]
         dim = (300, int(image.shape[0] * r))
@@ -22,20 +26,27 @@ if os.path.exists(path):
         center = (w / 2, h / 2)
         M = cv2.getRotationMatrix2D(center, 270, 1.0)
         image = cv2.warpAffine(image, M, (w, h))
+        showImageWithDelay(image, 1000)
+        # grayscale
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        showImageWithDelay(image, 1000)
         # invert colors
         image = (255-image)
-        # find otsu's threshold value with median blurring
+        showImageWithDelay(image, 1000)
+        # find otsu's threshold value with median blurring -> bw
         blur = cv2.medianBlur(image, 5) # cv2.GaussianBlur(image,(5,5),0)
         ret,thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         image = thresh
+        showImageWithDelay(image, 1000)
         # apply morphological closing to close holes
         kernel = np.ones((5,5), np.uint8)
         image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
+        showImageWithDelay(image, 1000)
         # canny edge detection: performs gaussian filter, intensity gradient,
         # non-max suppression, hysteresis thresholding all at once
         image = cv2.Canny(image,100,200) # params: min, max vals
-        cv2.imshow('Image', image) # finally, show the image
-        cv2.waitKey(1000)
+        showImageWithDelay(image, 1000) # finally, show the image
+
 else:
 	sys.exit("The path name does not exist")
 
