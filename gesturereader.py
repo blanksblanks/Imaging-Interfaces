@@ -31,13 +31,17 @@ gray_img = cv2.imread('test_image.png', cv2.IMREAD_GRAYSCALE) # default has colo
 cv2.imwrite('test_image_grayscale.jpg',gray_img)
 
 imageformat=".JPG"
-path = sys.argv[1]
+path = "./" + sys.argv[1]
 # path="./images"
 if os.path.exists(path):
     imfilelist=[os.path.join(path,f) for f in os.listdir(path) if f.endswith(imageformat)]
     for el in imfilelist:
         print el
         image = cv2.imread(el, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        # resize image - calculate aspect ratio first
+        r = 300.0 / image.shape[1]
+        dim = (300, int(image.shape[0] * r))
+        image = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
         cv2.imshow('Image', image) #Show the image
         cv2.waitKey(1000)
 else:
