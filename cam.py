@@ -1,10 +1,11 @@
-import cv2, time, sys
+import cv2, time, sys, os
 import numpy as np
 
 # Camera 0 is the integrated web cam
 camera_port = 0
 timer = 5
 file_count = 1
+dir_name = str(int(time.time()))
 
 # Initialize the camera capture object with the cv2.VideoCapture class.
 # All it needs is the index to a camera port.
@@ -22,15 +23,16 @@ def get_image():
 def write_file_to_disk():
     global file_count
     global camera
+    global dir_name
     # take the actual image we want to keep
     print('\nTaking image!')
     camera_capture = get_image()
-    file = "./" + str(int(time.time())) + "_"+ str(file_count) + ".png"
+    imageFile = "./" + dir_name + "/file_"+ str(file_count) + ".png"
+    print 'Writing image file to', imageFile, '\n'
     # nice feature of the imwrite method is that it will automatically choose the
     # correct format based on the file extension you provide. Convenient!
-    cv2.imwrite(file, camera_capture)
+    cv2.imwrite(imageFile, camera_capture)
     file_count += 1
-
 
     if file_count > 3:
         camera.release()
@@ -39,6 +41,12 @@ def write_file_to_disk():
 
 def open_camera_feed():
     global camera
+    global dir_name
+
+    # create directory
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
     local_timer = timer
     start_time = int(time.time());
 
