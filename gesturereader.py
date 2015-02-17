@@ -2,6 +2,50 @@ import cv2, os, sys, time
 import numpy as np
 # import matplotlib.pyplot as plt
 
+def classify(num):
+    if num is 0:
+        return 'fist'
+    if num is 1:
+        return 'two'
+    if num is 2:
+        return 'three'
+    if num is 3:
+        return 'four'
+    if num is 4:
+        return 'five'
+    else:
+        return 'unknown gesture'
+
+def locate(h, cx, cy):
+    w = h # square image
+    h1 = int(h/3)
+    h2 = h - int(h/3)
+    v1 = int(w/3)
+    v2 = w - int(w/3)
+    lst = [(0,h1), (w,h1), (0,h2), (w,h2), (v1,0), (v1,h), (v2,0), (v2,h)]
+
+    p1 = (v1,h1) # [0] = x, [1] = y
+    p2 = (v2,h1)
+    p3 = (v1,h2)
+    p4 = (v2,h2)
+
+    if cx > p1[0] and cx < p2[0] and cy < p3[1] and cy > p1[1]:
+        return 'center', lst
+    elif cx < p1[0] and cy < p1[1]:
+        return 'top-left', lst
+    elif cx > p2[0] and cy < p2[1]:
+        return 'top-right', lst
+    elif cx < p3[0] and cy > p3[1]:
+        return 'bottom-left', lst
+    elif cx > p4[0] and cy > p4[1]:
+        return 'bottom-right', lst
+    elif cx > p1[0] and cx < p2[0] and cy < p2[1]:
+        return 'top-center', lst
+    elif cx > p1[0] and cx < p2[0] and cy > p4[1]:
+        return 'bottom-center', lst
+    else:
+        return 'unknown location', lst
+
 # resize image to 300 x 300 pixels
 def resize(image):
     r = 300.0 / image.shape[1] # calculate aspect ratio
@@ -49,7 +93,7 @@ def close(image):
     show(image, 1000)
     return image
 
-def cannyEdge(image):
+def edge_finder(image):
     # canny edge detection: performs gaussian filter, intensity gradient,
     #non-max suppression, hysteresis thresholding all at once
     image = cv2.Canny(image,100,200) # params: min, max vals
@@ -57,7 +101,7 @@ def cannyEdge(image):
     return image
 
 # find contours and convex hull
-def contourify(image):
+def contour_reader(image):
     temp = image # store because findContours modifes source
 
     contours,hierarchy = cv2.findContours(image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -96,73 +140,68 @@ def contourify(image):
     centroid = (cx, cy)
     cv2.circle(image, centroid, 6, (255,255,0), -1)
     print 'centroid:', centroid
-    show(image, 1000)
 
-    h = len(image) # as image is a numpy array
-    w = len(image[0])
-    h1 = int(h/3)
-    h2 = h - int(h/3)
-    v1 = int(w/3)
-    v2 = w - int(w/3)
-    lst = [(0,h1), (w,h1), (0,h2), (w,h2), (v1,0), (v1,h), (v2,0), (v2,h)]
+    gesture = classify(interdigitalis)
+    print 'gesture', gesture
+
+    # calculate size for height as image is a numpy array
+    h = len(image)
+    location,lst = locate(h, cx, cy)
+    print location
+
+    # draw visual grid
     for i in xrange(0, len(lst), 2):
         a = lst[i]
         b = lst[i+1]
         # print a,b
         cv2.line(image,a,b,[128,128,128],1)
-    p1 = (v1,h1) # [0] = x, [1] = y
-    p2 = (v2,h1)
-    p3 = (v1,h2)
-    p4 = (v2,h2)
-    if cx > p1[0] and cx < p2[0] and cy < p3[1] and cy > p1[1]:
-        print 'center'
-    elif cx < p1[0] and cy < p1[1]:
-        print 'top-left', p1
-    elif cx > p2[0] and cy < p2[1]:
-        print 'top-right', p2
-    elif cx < p3[0] and cy > p3[1]:
-        print 'bottom-left', p3
-    elif cx > p4[0] and cy > p4[1]:
-        print 'bottom-right', p4
-    elif cx > p1[0] and cx < p2[0] and cy < p2[1]:
-    	print 'top-center'
-    elif cx > p1[0] and cx < p2[0] and cy > p4[1]:
-    	print 'bottom-center'
-    else:
-        print 'unknown location'
 
     show(image, 1000)
-    return image
+
+    pair = (gesture, location)
+
+    return image,pair
 
 def save(image, name):
-	cv2.imwrite(name, image)
+    cv2.imwrite(name, image)
 
 def show(image, wait):
     cv2.waitKey(wait)
     cv2.imshow('Image', image)
 
 def main():
+
+    if len(sys.argv) < 2:
+        sys.exit("Need to specify a path from which to read images")
+
     imageformat=".JPG"
     path = "./" + sys.argv[1]
+
+    history = []
 
     # load image sequence
     if os.path.exists(path):
         imfilelist=[os.path.join(path,f) for f in os.listdir(path) if f.endswith(imageformat)]
+        if len(imfilelist) < 1:
+        	sys.exit ("Need to specify a path containing .JPG files")
         for el in imfilelist:
             print el
             image = cv2.imread(el, cv2.IMREAD_COLOR) # load original
-            # image = resize(image)
-            image = rotate(image)
-            save(image, el)
-            '''save(image, el[:-4]+'_resized.png')
+#            image = rotate(image)
+ #           save(image, el)
+            image = resize(image)
+            save(image, 'post-processing/'+el[:-4]+'_resized.png')
             image = grayscale(image)
             save(image, el[:-4]+'_grayscale.png')
             image = binarize(image)
             save(image, el[:-4]+'_binarized.png')
-            image = contourify(image)
-            save(image, el[:-4]+'_contours.png')'''
+            image,combo = contour_reader(image)
+            history.append(combo)
+            save(image, el[:-4]+'_contours.png')
     else:
         sys.exit("The path name does not exist")
+
+    print history
 
     time.sleep(5)
 
