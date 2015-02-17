@@ -49,7 +49,7 @@ def close(image):
     show(image, 1000)
     return image
 
-def edgify(image):
+def cannyEdge(image):
     # canny edge detection: performs gaussian filter, intensity gradient,
     #non-max suppression, hysteresis thresholding all at once
     image = cv2.Canny(image,100,200) # params: min, max vals
@@ -69,6 +69,7 @@ def contourify(image):
     defects = cv2.convexityDefects(cnt,hull) # array
 
     image = temp # revert to original
+    cv2.drawContours(image, contours, 0, (255,255,255), 1)
     image = colorize(image) # prep for drawing in color
 
     # defects returns four arrays: start point, end point, farthest
@@ -81,9 +82,9 @@ def contourify(image):
             end = tuple(cnt[e][0])
             far = tuple(cnt[f][0])
             # print start, end, far
-            cv2.line(image,start,end,[0,255,0],2)
+            cv2.line(image,start,end,[0,255,0],1)
             cv2.circle(image,far,3,[255,0,255],-1)
-            print d
+            # print d
             if d > 6000: # trial and error
                 interdigitalis += 1
     print 'interdigitalis', interdigitalis
@@ -95,8 +96,8 @@ def contourify(image):
     centroid = (cx, cy)
     cv2.circle(image, centroid, 6, (255,255,0), -1)
     print 'centroid', centroid
-
     show(image, 1000)
+
     h = len(image) # as image is a numpy array
     w = len(image[0])
     h1 = int(h/3)
@@ -108,7 +109,7 @@ def contourify(image):
         a = lst[i]
         b = lst[i+1]
         # print a,b
-        cv2.line(image,a,b,[255,255,255],1)
+        cv2.line(image,a,b,[255,255,0],1)
     p1 = (v1,h1) # [0] = x, [1] = y
     p2 = (v2,h1)
     p3 = (v1,h2)
@@ -126,10 +127,11 @@ def contourify(image):
     else:
         print 'unknown location'
 
-
     show(image, 1000)
-
     return image
+
+def save(image, name):
+	cv2.imwrite(name, image)
 
 def show(image, wait):
     cv2.waitKey(wait)
@@ -144,13 +146,16 @@ def main():
         imfilelist=[os.path.join(path,f) for f in os.listdir(path) if f.endswith(imageformat)]
         for el in imfilelist:
             print el
-            # load original image
-            image = cv2.imread(el, cv2.IMREAD_COLOR)
+            image = cv2.imread(el, cv2.IMREAD_COLOR) # load original
             image = resize(image)
             image = rotate(image)
+            save(image, el[:-4]+'_resized.png')
             image = grayscale(image)
+            save(image, el[:-4]+'_grayscale.png')
             image = binarize(image)
+            save(image, el[:-4]+'_binarized.png')
             image = contourify(image)
+            save(image, el[:-4]+'_contours.png')
     else:
         sys.exit("The path name does not exist")
 
