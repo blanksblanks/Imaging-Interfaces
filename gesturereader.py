@@ -151,15 +151,16 @@ def main():
         for el in imfilelist:
             print el
             image = cv2.imread(el, cv2.IMREAD_COLOR) # load original
-            image = resize(image)
+            # image = resize(image)
             image = rotate(image)
-            save(image, el[:-4]+'_resized.png')
+            save(image, el)
+            '''save(image, el[:-4]+'_resized.png')
             image = grayscale(image)
             save(image, el[:-4]+'_grayscale.png')
             image = binarize(image)
             save(image, el[:-4]+'_binarized.png')
             image = contourify(image)
-            save(image, el[:-4]+'_contours.png')
+            save(image, el[:-4]+'_contours.png')'''
     else:
         sys.exit("The path name does not exist")
 
