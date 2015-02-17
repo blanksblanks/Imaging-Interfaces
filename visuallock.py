@@ -191,9 +191,9 @@ def authenticate(sequence):
     tup1 = sequence[0]
     tup2 = sequence[1]
     tup3 = sequence[2]
-    if (tup1[0] is 'Fist' and tup1[1] is 'Center') and
-    (tup2[0] is 'Five' and tup2[1] is 'Bottom-left') and
-    (tup3[0] is 'Five' and tup3[1] is 'Top-right'):
+    if (tup1[0] is 'Fist' and tup1[1] is 'Center' and
+    tup2[0] is 'Five' and tup2[1] is 'Bottom-left' and
+    tup3[0] is 'Five' and tup3[1] is 'Top-right':
         return admittance
     else:
         return denial
