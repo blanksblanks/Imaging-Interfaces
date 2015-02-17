@@ -178,13 +178,14 @@ def authenticate(sequence):
     overload = 'There was a surplus of tokens. Access denied. Try again.'
     underflow = 'There were not enough tokens. Access denied. Try again.'
 
-    for tup in sequence:
-        if 'Unknown' in tup:
-            return confusion
     if len(sequence) > 3:
         return overload
     if len(sequence) < 3:
         return underflow
+
+    for tup in sequence:
+        if 'Unknown' in tup:
+            return confusion
 
     # check three sequences
     tup1 = sequence[0]
