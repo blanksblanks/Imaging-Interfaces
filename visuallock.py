@@ -191,9 +191,11 @@ def authenticate(sequence):
     tup1 = sequence[0]
     tup2 = sequence[1]
     tup3 = sequence[2]
-    if (tup1[0] is 'Fist' and tup1[1] is 'Center' and
-    tup2[0] is 'Five' and tup2[1] is 'Bottom-left' and
-    tup3[0] is 'Five' and tup3[1] is 'Top-right':
+    print sequence
+    condition1 = tup1[0] == 'Fist' and tup1[1] == 'Center'
+    condition2 = tup2[0] == 'Five' and tup2[1] == 'Bottom-left'
+    condition3 =tup3[0] == 'Five' and tup3[1] == 'Top-right'
+    if  condition1 and condition2 and condition3:
         return admittance
     else:
         return denial
@@ -219,7 +221,6 @@ def main():
 
     imageformat=".JPG"
     path = "./" + sys.argv[1]
-    print path
 
     combination = []
 
