@@ -44,11 +44,11 @@ def open_camera_feed():
     global camera
     local_timer = timer
     start_time = int(time.time());
-   
-    while (camera.isOpened and local_timer <= timer): 
+
+    while (camera.isOpened and local_timer <= timer):
         val, frame = camera.read() # read the frame
         cv2.imshow('video', frame)
-        
+
         reverse_timer = timer - local_timer
         mins, secs = divmod(reverse_timer, 60)
         timeformat ='\rTaking image in... {:02d}:{:02d} seconds'.format(mins, secs)
