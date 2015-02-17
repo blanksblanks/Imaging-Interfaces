@@ -28,7 +28,7 @@ if os.path.exists(path):
         image = cv2.warpAffine(image, M, (w, h))
         showImageWithDelay(image, 1000)
         # grayscale
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         showImageWithDelay(image, 1000)
         # invert colors
         image = (255-image)
@@ -45,7 +45,24 @@ if os.path.exists(path):
         # canny edge detection: performs gaussian filter, intensity gradient,
         # non-max suppression, hysteresis thresholding all at once
         image = cv2.Canny(image,100,200) # params: min, max vals
-        showImageWithDelay(image, 1000) # finally, show the image
+        showImageWithDelay(image, 1000)
+        # find contours and convex hull
+        contours,hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+        cv2.drawContours(image, contours, -1, (0,255,0), 3)
+        cnt = contours[0]
+        hull = cv2.convexHull(cnt,returnPoints = False)
+        defects = cv2.convexityDefects(cnt,hull) # array
+        print contours, hierarchy, cnt, hull, defects
+        '''for i in range(defects.shape[0]):
+            s,e,f,d = defects[i,0]
+            start = tuple(cnt[s][0])
+            end = tuple(cnt[e][0])
+            far = tuple(cnt[f][0])
+            cv2.line(image,start,end,[0,255,0],2)
+            cv2.circle(image,far,5,[0,0,255],-1)'''
+        # cnt = contours[4]
+        # cv2.drawContours(image, [cnt], -1, (255,0,0), 3)
+        showImageWithDelay(image, 1000)
 
 else:
 	sys.exit("The path name does not exist")
