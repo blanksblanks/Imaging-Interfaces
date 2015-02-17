@@ -48,7 +48,7 @@ def write_file_to_disk():
     if file_count > 3:
         camera.release()
         # read the fresh sequence of gestures
-        # TODO: link these classes properly instead of hijacking os system
+        ''' TODO: link these classes properly instead of hijacking os system '''
         os.system("python gesturereader.py " + dir_name)
     else:
         open_camera_feed()

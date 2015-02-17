@@ -127,6 +127,16 @@ def contour_reader(image):
 # Parsing and Performance
 # ============================================================
 
+'''TODO: an alternative form of grammar could have encoded the
+hand-based passwords into numbers or bitstrings
+
+Fist : 0, Two : 2, Three : 3, Four : 4, Five : 5,
+Center : 11, Top-left : 00 , Top-center : 10, Top-right: 20,
+Bottom-left : 02 , Bottom-center : 12, Bottom-right : 22
+
+Then the default password could be represented as: 011502520
+instead of 'Fist' 'Center' 'Five' 'Bottom-left' 'Five' 'Top-right'
+'''
 def classify(num):
     if num is 0:
         return 'Fist'
