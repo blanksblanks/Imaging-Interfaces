@@ -74,19 +74,18 @@ def contourify(image):
     # defects returns four arrays: start point, end point, farthest
     # point (indices of cnt), and approx distance to farthest point
     interdigitalis = 0 # representing tip of finger to convext points
-    if len(hull) > 3 and len(cnt) > 3:
-        if (defects is not None):
-            for i in range(defects.shape[0]):
-                s,e,f,d = defects[i,0]
-                start = tuple(cnt[s][0])
-                end = tuple(cnt[e][0])
-                far = tuple(cnt[f][0])
-                # print start, end, far
-                cv2.line(image,start,end,[0,255,0],2)
-                cv2.circle(image,far,3,[255,0,255],-1)
-                # print d
-                if d > 3000: # trial and error
-                    interdigitalis += 1
+    if len(hull) > 3 and len(cnt) > 3 and (defects is not None):
+        for i in range(defects.shape[0]):
+            s,e,f,d = defects[i,0]
+            start = tuple(cnt[s][0])
+            end = tuple(cnt[e][0])
+            far = tuple(cnt[f][0])
+            # print start, end, far
+            cv2.line(image,start,end,[0,255,0],2)
+            cv2.circle(image,far,3,[255,0,255],-1)
+            print d
+            if d > 6000: # trial and error
+                interdigitalis += 1
     print 'interdigitalis', interdigitalis
 
     # find centroid
@@ -94,7 +93,7 @@ def contourify(image):
     cx = int(M['m10']/M['m00'])
     cy = int(M['m01']/M['m00'])
     centroid = (cx, cy)
-    cv2.circle(image, centroid, 3, (255,255,0), -1)
+    cv2.circle(image, centroid, 6, (255,255,0), -1)
     print 'centroid', centroid
 
     show(image, 1000)
@@ -110,6 +109,23 @@ def contourify(image):
         b = lst[i+1]
         # print a,b
         cv2.line(image,a,b,[255,255,255],1)
+    p1 = (v1,h1) # [0] = x, [1] = y
+    p2 = (v2,h1)
+    p3 = (v1,h2)
+    p4 = (v2,h2)
+    if cx > p1[0] and cx < p2[0] and cy < p3[1] and cy > p1[1]:
+        print 'center'
+    elif cx < p1[0] and cy < p1[1]:
+        print 'top-left', p1
+    elif cx > p2[0] and cy < p2[1]:
+        print 'top-right', p2
+    elif cx < p3[0] and cy > p3[1]:
+        print 'bottom-left', p3
+    elif cx > p4[0] and cy > p4[1]:
+        print 'bottom-right', p4
+    else:
+        print 'unknown location'
+
 
     show(image, 1000)
 
