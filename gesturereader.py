@@ -2,9 +2,9 @@ import cv2, os, sys, time
 import numpy as np
 # import matplotlib.pyplot as plt
 
-# ============
-DATA REDUCTION
-# ============
+# ============================================================
+# Data Reduction
+# ============================================================
 
 # resize image to 300 x 300 pixels
 def resize(image):
@@ -28,6 +28,7 @@ def grayscale(image):
     show(image, 1000)
     return image
 
+# convert grayscale image to color (to permit color drawing)
 def colorize(image):
     image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     return image
@@ -40,31 +41,32 @@ def invert(image):
 
 # find otsu's threshold value with median blurring to make image black and white
 def binarize(image):
-    blur = cv2.medianBlur(image, 5) # better for spotty noise than cv2.GaussianBlur(image,(5,5),0)
+    blur = cv2.medianBlur(image, 5)
+    # better for spotty noise than cv2.GaussianBlur(image,(5,5),0)
     ret,thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     image = thresh
     show(image, 1000)
     return image
 
+# apply morphological closing to close holes - removed from main as it closes gaps
 def close(image):
-    # apply morphological closing to close holes
     kernel = np.ones((5,5), np.uint8)
     image = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
     show(image, 1000)
     return image
 
+# canny edge detection: performs gaussian filter, intensity gradient, non-max
+# suppression, hysteresis thresholding all at once
 def edge_finder(image):
-    # canny edge detection: performs gaussian filter, intensity gradient,
-    #non-max suppression, hysteresis thresholding all at once
     image = cv2.Canny(image,100,200) # params: min, max vals
     show(image, 1000)
     return image
 
-# find contours and convex hull
+# find contours and convex hull and read that information using parsing methods
 def contour_reader(image):
-    temp = image # store because findContours modifes source
+    temp = image # store here because findContours modifes source
 
-    contours,hierarchy = cv2.findContours(image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     cnt = contours[0]
 
     # check curve for convexity defects and correct it
@@ -89,9 +91,9 @@ def contour_reader(image):
             cv2.line(image,start,end,[0,255,0],1)
             cv2.circle(image,far,3,[255,0,255],-1)
             # print d
-            if d > 6000: # trial and error
+            if d > 6000: # set by trial and error
                 interdigitalis += 1
-    print 'interdigitalis:', interdigitalis
+    # print 'interdigitalis:', interdigitalis
 
     # find centroid
     M = cv2.moments(cnt)
@@ -99,17 +101,18 @@ def contour_reader(image):
     cy = int(M['m01']/M['m00'])
     centroid = (cx, cy)
     cv2.circle(image, centroid, 6, (255,255,0), -1)
-    print 'centroid:', centroid
+    show(image, 1000)
+    # print 'centroid:', centroid
 
     gesture = classify(interdigitalis)
-    print 'gesture', gesture
+    # print 'gesture', gesture
 
     # calculate size for height as image is a numpy array
     h = len(image)
     location,lst = locate(h,cx,cy)
-    print location
+    # print location
 
-    # draw visual grid
+    # draw visual grid based on list coordinates returned by locate function
     for i in xrange(0, len(lst), 2):
         a = lst[i]
         b = lst[i+1]
@@ -120,20 +123,23 @@ def contour_reader(image):
     pair = (gesture, location)
     return image,pair
 
+# ============================================================
+# Parsing and Performance
+# ============================================================
 
 def classify(num):
     if num is 0:
-        return 'fist'
+        return 'Fist'
     if num is 1:
-        return 'two'
+        return 'Two'
     if num is 2:
-        return 'three'
+        return 'Three'
     if num is 3:
-        return 'four'
+        return 'Four'
     if num is 4:
-        return 'five'
+        return 'Five'
     else:
-        return 'unknown'
+        return 'Unknown'
 
 def locate(h, cx, cy):
     w = h # square image
@@ -149,21 +155,21 @@ def locate(h, cx, cy):
     p4 = (v2,h2)
 
     if cx > p1[0] and cx < p2[0] and cy < p3[1] and cy > p1[1]:
-        return 'center', lst
+        return 'Center', lst
     elif cx < p1[0] and cy < p1[1]:
-        return 'top-left', lst
+        return 'Top-left', lst
     elif cx > p2[0] and cy < p2[1]:
-        return 'top-right', lst
+        return 'Top-right', lst
     elif cx < p3[0] and cy > p3[1]:
-        return 'bottom-left', lst
+        return 'Bottom-left', lst
     elif cx > p4[0] and cy > p4[1]:
-        return 'bottom-right', lst
+        return 'Bottom-right', lst
     elif cx > p1[0] and cx < p2[0] and cy < p2[1]:
-        return 'top-center', lst
+        return 'Top-center', lst
     elif cx > p1[0] and cx < p2[0] and cy > p4[1]:
-        return 'bottom-center', lst
+        return 'Bottom-center', lst
     else:
-        return 'unknown', lst
+        return 'Unknown', lst
 
 def authenticate(sequence):
     denial = 'Entered wrong password combination. Access denied.'
@@ -171,21 +177,25 @@ def authenticate(sequence):
     confusion = 'There is an unknown value in your input. Access denied.'
 
     for tup in sequence:
-        if 'unknown' in tup:
+        if 'Unknown' in tup:
             return confusion
 
     # check three sequences
     tup1 = sequence[0]
-    if tup[0] is not 'center' and tup[1] is not 'fist':
+    if tup[0] is not 'Center' and tup[1] is not 'Fist':
          return denial
     tup2 = sequence[1]
-    if tup[0] is not 'five' and tup[1] is not 'bottom-left':
+    if tup[0] is not 'Five' and tup[1] is not 'Bottom-left':
         return denial
     tup3 = sequence[2]
-    if tup[0] is not 'five' and tup[2] is not 'top-right':
+    if tup[0] is not 'Five' and tup[2] is not 'Top-right':
         return denial
 
     return admittance
+
+# ============================================================
+# Helper Functions
+# ============================================================
 
 def save(image, name):
     cv2.imwrite(name, image)
@@ -194,8 +204,11 @@ def show(image, wait):
     cv2.waitKey(wait)
     cv2.imshow('Image', image)
 
-def main():
+# ============================================================
+# Main Method
+# ============================================================
 
+def main():
     if len(sys.argv) < 2:
         sys.exit("Need to specify a path from which to read images")
 
@@ -212,22 +225,30 @@ def main():
         for el in imfilelist:
             print el
             image = cv2.imread(el, cv2.IMREAD_COLOR) # load original
-#            image = rotate(image)
- #           save(image, el)
             image = resize(image)
+            print 'resize'
             save(image, 'post-processing/'+el[:-4]+'_resized.png')
+            print 'gray'
             image = grayscale(image)
-            save(image, el[:-4]+'_grayscale.png')
+            save(image, 'post-processing/'+el[:-4]+'_grayscale.png')
             image = binarize(image)
-            save(image, el[:-4]+'_binarized.png')
+            print 'binarize'
+            save(image, 'post-processing/'+el[:-4]+'_binarized.png')
+            image = close(image)
+            print 'close'
+            save(image, 'post-processing/'+el[:-4]+'_closed.png')
             image,combo = contour_reader(image)
+            save(image, 'post-processing/'+el[:-4]+'_contours.png')
             combination.append(combo)
-            save(image, el[:-4]+'_contours.png')
     else:
         sys.exit("The path name does not exist")
 
-    print combination
+    combo_string = "You entered "
+    for tup in combination:
+        combo_string += tup[0] + ", " + "tup[1]"
+    # print combination
     decision = authenticate(combination)
+    print combo_string
     print decision
 
     time.sleep(5)
