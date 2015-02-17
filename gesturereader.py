@@ -2,49 +2,9 @@ import cv2, os, sys, time
 import numpy as np
 # import matplotlib.pyplot as plt
 
-def classify(num):
-    if num is 0:
-        return 'fist'
-    if num is 1:
-        return 'two'
-    if num is 2:
-        return 'three'
-    if num is 3:
-        return 'four'
-    if num is 4:
-        return 'five'
-    else:
-        return 'unknown gesture'
-
-def locate(h, cx, cy):
-    w = h # square image
-    h1 = int(h/3)
-    h2 = h - int(h/3)
-    v1 = int(w/3)
-    v2 = w - int(w/3)
-    lst = [(0,h1), (w,h1), (0,h2), (w,h2), (v1,0), (v1,h), (v2,0), (v2,h)]
-
-    p1 = (v1,h1) # [0] = x, [1] = y
-    p2 = (v2,h1)
-    p3 = (v1,h2)
-    p4 = (v2,h2)
-
-    if cx > p1[0] and cx < p2[0] and cy < p3[1] and cy > p1[1]:
-        return 'center', lst
-    elif cx < p1[0] and cy < p1[1]:
-        return 'top-left', lst
-    elif cx > p2[0] and cy < p2[1]:
-        return 'top-right', lst
-    elif cx < p3[0] and cy > p3[1]:
-        return 'bottom-left', lst
-    elif cx > p4[0] and cy > p4[1]:
-        return 'bottom-right', lst
-    elif cx > p1[0] and cx < p2[0] and cy < p2[1]:
-        return 'top-center', lst
-    elif cx > p1[0] and cx < p2[0] and cy > p4[1]:
-        return 'bottom-center', lst
-    else:
-        return 'unknown location', lst
+# ============
+DATA REDUCTION
+# ============
 
 # resize image to 300 x 300 pixels
 def resize(image):
@@ -146,7 +106,7 @@ def contour_reader(image):
 
     # calculate size for height as image is a numpy array
     h = len(image)
-    location,lst = locate(h, cx, cy)
+    location,lst = locate(h,cx,cy)
     print location
 
     # draw visual grid
@@ -155,12 +115,77 @@ def contour_reader(image):
         b = lst[i+1]
         # print a,b
         cv2.line(image,a,b,[128,128,128],1)
-
     show(image, 1000)
 
     pair = (gesture, location)
-
     return image,pair
+
+
+def classify(num):
+    if num is 0:
+        return 'fist'
+    if num is 1:
+        return 'two'
+    if num is 2:
+        return 'three'
+    if num is 3:
+        return 'four'
+    if num is 4:
+        return 'five'
+    else:
+        return 'unknown'
+
+def locate(h, cx, cy):
+    w = h # square image
+    h1 = int(h/3)
+    h2 = h - int(h/3)
+    v1 = int(w/3)
+    v2 = w - int(w/3)
+    lst = [(0,h1), (w,h1), (0,h2), (w,h2), (v1,0), (v1,h), (v2,0), (v2,h)]
+
+    p1 = (v1,h1) # [0] = x, [1] = y
+    p2 = (v2,h1)
+    p3 = (v1,h2)
+    p4 = (v2,h2)
+
+    if cx > p1[0] and cx < p2[0] and cy < p3[1] and cy > p1[1]:
+        return 'center', lst
+    elif cx < p1[0] and cy < p1[1]:
+        return 'top-left', lst
+    elif cx > p2[0] and cy < p2[1]:
+        return 'top-right', lst
+    elif cx < p3[0] and cy > p3[1]:
+        return 'bottom-left', lst
+    elif cx > p4[0] and cy > p4[1]:
+        return 'bottom-right', lst
+    elif cx > p1[0] and cx < p2[0] and cy < p2[1]:
+        return 'top-center', lst
+    elif cx > p1[0] and cx < p2[0] and cy > p4[1]:
+        return 'bottom-center', lst
+    else:
+        return 'unknown', lst
+
+def authenticate(sequence):
+    denial = 'Entered wrong password combination. Access denied.'
+    admittance = 'Thank you for entering your password combination. Access granted.'
+    confusion = 'There is an unknown value in your input. Access denied.'
+
+    for tup in sequence:
+        if 'unknown' in tup:
+            return confusion
+
+    # check three sequences
+    tup1 = sequence[0]
+    if tup[0] is not 'center' and tup[1] is not 'fist':
+         return denial
+    tup2 = sequence[1]
+    if tup[0] is not 'five' and tup[1] is not 'bottom-left':
+        return denial
+    tup3 = sequence[2]
+    if tup[0] is not 'five' and tup[2] is not 'top-right':
+        return denial
+
+    return admittance
 
 def save(image, name):
     cv2.imwrite(name, image)
@@ -177,7 +202,7 @@ def main():
     imageformat=".JPG"
     path = "./" + sys.argv[1]
 
-    history = []
+    combination = []
 
     # load image sequence
     if os.path.exists(path):
@@ -196,12 +221,14 @@ def main():
             image = binarize(image)
             save(image, el[:-4]+'_binarized.png')
             image,combo = contour_reader(image)
-            history.append(combo)
+            combination.append(combo)
             save(image, el[:-4]+'_contours.png')
     else:
         sys.exit("The path name does not exist")
 
-    print history
+    print combination
+    decision = authenticate(combination)
+    print decision
 
     time.sleep(5)
 
