@@ -174,11 +174,17 @@ def locate(h, cx, cy):
 def authenticate(sequence):
     denial = 'Entered wrong password combination. Access denied.'
     admittance = 'Thank you for entering your password combination. Access granted.'
-    confusion = 'There is an unknown value in your input. Access denied.'
+    confusion = 'There is an unknown value in your input. Access denied. Try again.'
+    overload = 'There was a surplus of tokens. Access denied. Try again.'
+    underflow = 'There were not enough tokens. Access denied. Try again.'
 
     for tup in sequence:
         if 'Unknown' in tup:
             return confusion
+    if len(sequence) > 3:
+        return overload
+    if len(sequence) < 3:
+        return underflow
 
     # check three sequences
     tup1 = sequence[0]
@@ -223,32 +229,26 @@ def main():
         if len(imfilelist) < 1:
         	sys.exit ("Need to specify a path containing .JPG files")
         for el in imfilelist:
-            print el
+            sys.stdout.write(el)
             image = cv2.imread(el, cv2.IMREAD_COLOR) # load original
             image = resize(image)
-            print 'resize'
             save(image, 'post-processing/'+el[:-4]+'_resized.png')
-            print 'gray'
             image = grayscale(image)
             save(image, 'post-processing/'+el[:-4]+'_grayscale.png')
             image = binarize(image)
-            print 'binarize'
             save(image, 'post-processing/'+el[:-4]+'_binarized.png')
             image = close(image)
-            print 'close'
             save(image, 'post-processing/'+el[:-4]+'_closed.png')
             image,combo = contour_reader(image)
             save(image, 'post-processing/'+el[:-4]+'_contours.png')
             combination.append(combo)
+            print ' >> ' + combo[0] + ', ' + combo[1]
+
     else:
         sys.exit("The path name does not exist")
 
-    combo_string = "You entered "
-    for tup in combination:
-        combo_string += tup[0] + ", " + "tup[1]"
     # print combination
     decision = authenticate(combination)
-    print combo_string
     print decision
 
     time.sleep(5)
