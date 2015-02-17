@@ -9,8 +9,8 @@ file_count = 1
 # Initialize the camera capture object with the cv2.VideoCapture class.
 # All it needs is the index to a camera port.
 camera = cv2.VideoCapture(camera_port)
-camera.set(3, 480)
-camera.set(4, 480)
+camera.set(3, 640)
+camera.set(4, 640)
 
 
 # Captures a single image from the camera and returns it in PIL format
