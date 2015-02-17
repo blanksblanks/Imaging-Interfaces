@@ -1,4 +1,4 @@
-import cv2, os, sys
+import cv2, os, sys, time
 import numpy as np
 # import matplotlib.pyplot as plt
 
@@ -49,7 +49,7 @@ def close(image):
     show(image, 1000)
     return image
 
-def findEdges(image):
+def edgify(image):
     # canny edge detection: performs gaussian filter, intensity gradient,
     #non-max suppression, hysteresis thresholding all at once
     image = cv2.Canny(image,100,200) # params: min, max vals
@@ -59,35 +59,21 @@ def findEdges(image):
 # find contours and convex hull
 def contourify(image):
     temp = image # store because findContours modifes source
-    contours,hierarchy = cv2.findContours(image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-    # cv2.drawContours(image, contours, -1, (0,255,0), 3)
 
+    contours,hierarchy = cv2.findContours(image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     cnt = contours[0]
-    M = cv2.moments(cnt)
-    # print M
 
     # check curve for convexity defects and correct it
-    # points[]: contours passed in
-    # hull[]: output
-    # clockwise[]: true or false
-    # returnPoints: if false, return indices of contour points
+    # pass in contour points, hull, !returnPoints return indices
     hull = cv2.convexHull(cnt,returnPoints = False)
     defects = cv2.convexityDefects(cnt,hull) # array
 
     image = temp # revert to original
-    image = colorize(image)
-
-    # cv2.drawContours(image, contours, 0, (0,255,0), 5)
-
-    # find centroid
-    cx = int(M['m10']/M['m00'])
-    cy = int(M['m01']/M['m00'])
-    centroid = (cx, cy)
-    # cv2.circle(image, centroid, 5, (255,255,0), -1)
+    image = colorize(image) # prep for drawing in color
 
     # defects returns four arrays: start point, end point, farthest
     # point (indices of cnt), and approx distance to farthest point
-    oscillations = 0 # representing tip of finger to convext points
+    interdigitalis = 0 # representing tip of finger to convext points
     if len(hull) > 3 and len(cnt) > 3:
         if (defects is not None):
             for i in range(defects.shape[0]):
@@ -95,15 +81,38 @@ def contourify(image):
                 start = tuple(cnt[s][0])
                 end = tuple(cnt[e][0])
                 far = tuple(cnt[f][0])
+                # print start, end, far
                 cv2.line(image,start,end,[0,255,0],2)
-                cv2.circle(image,far,5,[255,0,255],-1)
+                cv2.circle(image,far,3,[255,0,255],-1)
                 # print d
-                if d > 3000:
-                    oscillations += 1
-    print oscillations
-    # cnt = contours[4]
-    # cv2.drawContours(image, [cnt], -1, (255,0,0), 3)
-    show(image, 3000)
+                if d > 3000: # trial and error
+                    interdigitalis += 1
+    print 'interdigitalis', interdigitalis
+
+    # find centroid
+    M = cv2.moments(cnt)
+    cx = int(M['m10']/M['m00'])
+    cy = int(M['m01']/M['m00'])
+    centroid = (cx, cy)
+    cv2.circle(image, centroid, 3, (255,255,0), -1)
+    print 'centroid', centroid
+
+    show(image, 1000)
+    h = len(image) # as image is a numpy array
+    w = len(image[0])
+    h1 = int(h/3)
+    h2 = h - int(h/3)
+    v1 = int(w/3)
+    v2 = w - int(w/3)
+    lst = [(0,h1), (w,h1), (0,h2), (w,h2), (v1,0), (v1,h), (v2,0), (v2,h)]
+    for i in xrange(0, len(lst), 2):
+        a = lst[i]
+        b = lst[i+1]
+        # print a,b
+        cv2.line(image,a,b,[255,255,255],1)
+
+    show(image, 1000)
+
     return image
 
 def show(image, wait):
@@ -125,10 +134,11 @@ def main():
             image = rotate(image)
             image = grayscale(image)
             image = binarize(image)
-            image = close(image)
             image = contourify(image)
     else:
         sys.exit("The path name does not exist")
+
+    time.sleep(5)
 
 if __name__ == "__main__": main()
 
