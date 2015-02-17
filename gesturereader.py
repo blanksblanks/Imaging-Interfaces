@@ -24,6 +24,10 @@ def grayscale(image):
     show(image, 1000)
     return image
 
+def colorize(image):
+    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    return image
+
 # invert image colors
 def invert(image):
     image = (255-image)
@@ -71,6 +75,7 @@ def contourify(image):
     defects = cv2.convexityDefects(cnt,hull) # array
 
     image = temp # revert to original
+    image = colorize(image)
 
     # cv2.drawContours(image, contours, 0, (0,255,0), 5)
 
@@ -78,8 +83,11 @@ def contourify(image):
     cx = int(M['m10']/M['m00'])
     cy = int(M['m01']/M['m00'])
     centroid = (cx, cy)
-    cv2.circle(image, centroid, 20, (255,255,0), -1)
+    # cv2.circle(image, centroid, 5, (255,255,0), -1)
 
+    # defects returns four arrays: start point, end point, farthest
+    # point (indices of cnt), and approx distance to farthest point
+    oscillations = 0 # representing tip of finger to convext points
     if len(hull) > 3 and len(cnt) > 3:
         if (defects is not None):
             for i in range(defects.shape[0]):
@@ -88,10 +96,14 @@ def contourify(image):
                 end = tuple(cnt[e][0])
                 far = tuple(cnt[f][0])
                 cv2.line(image,start,end,[0,255,0],2)
-                cv2.circle(image,far,5,[0,0,255],-1)
+                cv2.circle(image,far,5,[255,0,255],-1)
+                # print d
+                if d > 3000:
+                    oscillations += 1
+    print oscillations
     # cnt = contours[4]
     # cv2.drawContours(image, [cnt], -1, (255,0,0), 3)
-    show(image, 1000)
+    show(image, 3000)
     return image
 
 def show(image, wait):
