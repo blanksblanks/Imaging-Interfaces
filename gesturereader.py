@@ -87,7 +87,7 @@ def contourify(image):
             # print d
             if d > 6000: # trial and error
                 interdigitalis += 1
-    print 'interdigitalis', interdigitalis
+    print 'interdigitalis:', interdigitalis
 
     # find centroid
     M = cv2.moments(cnt)
@@ -95,7 +95,7 @@ def contourify(image):
     cy = int(M['m01']/M['m00'])
     centroid = (cx, cy)
     cv2.circle(image, centroid, 6, (255,255,0), -1)
-    print 'centroid', centroid
+    print 'centroid:', centroid
     show(image, 1000)
 
     h = len(image) # as image is a numpy array
@@ -109,7 +109,7 @@ def contourify(image):
         a = lst[i]
         b = lst[i+1]
         # print a,b
-        cv2.line(image,a,b,[255,255,0],1)
+        cv2.line(image,a,b,[128,128,128],1)
     p1 = (v1,h1) # [0] = x, [1] = y
     p2 = (v2,h1)
     p3 = (v1,h2)
@@ -124,6 +124,10 @@ def contourify(image):
         print 'bottom-left', p3
     elif cx > p4[0] and cy > p4[1]:
         print 'bottom-right', p4
+    elif cx > p1[0] and cx < p2[0] and cy < p2[1]:
+    	print 'top-center'
+    elif cx > p1[0] and cx < p2[0] and cy > p4[1]:
+    	print 'bottom-center'
     else:
         print 'unknown location'
 
