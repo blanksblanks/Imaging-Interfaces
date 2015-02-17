@@ -201,7 +201,7 @@ def authenticate(sequence):
     tup1 = sequence[0]
     tup2 = sequence[1]
     tup3 = sequence[2]
-    print sequence
+    # print sequence
     condition1 = tup1[0] == 'Fist' and tup1[1] == 'Center'
     condition2 = tup2[0] == 'Five' and tup2[1] == 'Bottom-left'
     condition3 =tup3[0] == 'Five' and tup3[1] == 'Top-right'
