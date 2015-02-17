@@ -189,16 +189,14 @@ def authenticate(sequence):
 
     # check three sequences
     tup1 = sequence[0]
-    if tup[0] is not 'Center' and tup[1] is not 'Fist':
-         return denial
     tup2 = sequence[1]
-    if tup[0] is not 'Five' and tup[1] is not 'Bottom-left':
-        return denial
     tup3 = sequence[2]
-    if tup[0] is not 'Five' and tup[2] is not 'Top-right':
+    if (tup1[0] is 'Fist' and tup1[1] is 'Center') and
+    (tup2[0] is 'Five' and tup2[1] is 'Bottom-left') and
+    (tup3[0] is 'Five' and tup3[1] is 'Top-right'):
+        return admittance
+    else:
         return denial
-
-    return admittance
 
 # ============================================================
 # Helper Functions
@@ -221,6 +219,7 @@ def main():
 
     imageformat=".JPG"
     path = "./" + sys.argv[1]
+    print path
 
     combination = []
 
@@ -233,15 +232,15 @@ def main():
             sys.stdout.write(el)
             image = cv2.imread(el, cv2.IMREAD_COLOR) # load original
             image = resize(image)
-            save(image, 'post-processing/'+el[:-4]+'_resized.png')
+            save(image, el[:-4]+'_resized.png')
             image = grayscale(image)
-            save(image, 'post-processing/'+el[:-4]+'_grayscale.png')
+            save(image, el[:-4]+'_grayscale.png')
             image = binarize(image)
-            save(image, 'post-processing/'+el[:-4]+'_binarized.png')
+            save(image, el[:-4]+'_binarized.png')
             image = close(image)
-            save(image, 'post-processing/'+el[:-4]+'_closed.png')
+            save(image, el[:-4]+'_closed.png')
             image,combo = contour_reader(image)
-            save(image, 'post-processing/'+el[:-4]+'_contours.png')
+            save(image, el[:-4]+'_contours.png')
             combination.append(combo)
             print ' >> ' + combo[0] + ', ' + combo[1]
 
