@@ -31,8 +31,8 @@ if os.path.exists(path):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         showImageWithDelay(image, 1000)
         # invert colors
-        image = (255-image)
-        showImageWithDelay(image, 1000)
+        #image = (255-image)
+        #showImageWithDelay(image, 1000)
         # find otsu's threshold value with median blurring -> bw
         blur = cv2.medianBlur(image, 5) # cv2.GaussianBlur(image,(5,5),0)
         ret,thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
@@ -44,25 +44,50 @@ if os.path.exists(path):
         showImageWithDelay(image, 1000)
         # canny edge detection: performs gaussian filter, intensity gradient,
         # non-max suppression, hysteresis thresholding all at once
-        image = cv2.Canny(image,100,200) # params: min, max vals
-        showImageWithDelay(image, 1000)
+        # image = cv2.Canny(image,100,200) # params: min, max vals
+        # showImageWithDelay(image, 1000)
+        temp = image
+
         # find contours and convex hull
-        contours,hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(image, contours, -1, (0,255,0), 3)
+        # NOTE: contours function modifies the source image
+        # so if you want source image even after finding contours
+        contours,hierarchy = cv2.findContours(image,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+        # cv2.drawContours(image, contours, -1, (0,255,0), 3)
         cnt = contours[0]
+        M = cv2.moments(cnt)
+        print M
         hull = cv2.convexHull(cnt,returnPoints = False)
         defects = cv2.convexityDefects(cnt,hull) # array
-        print contours, hierarchy, cnt, hull, defects
-        '''for i in range(defects.shape[0]):
-            s,e,f,d = defects[i,0]
-            start = tuple(cnt[s][0])
-            end = tuple(cnt[e][0])
-            far = tuple(cnt[f][0])
-            cv2.line(image,start,end,[0,255,0],2)
-            cv2.circle(image,far,5,[0,0,255],-1)'''
+        print 'CONTOURS'
+        print contours
+        print 'hierarchy'
+        print hierarchy
+        print 'cnt'
+        print cnt
+        print 'hull'
+        print hull
+
+        image = temp
+        cv2.drawContours(image, contours, 0, (0,255,0), 5)
+        cx = int(M['m10']/M['m00'])
+        cy = int(M['m01']/M['m00'])
+        centroid = (cx, cy)
+        cv2.circle(image, centroid, 20, (255,255,0), -1)
+
+        if len(hull) > 3 and len(cnt) > 3:
+            if (defects is not None):
+            	print 'DEFECTS SHAPE?!'
+            	print defects.shape[0]
+                for i in range(defects.shape[0]):
+                    s,e,f,d = defects[i,0]
+                    start = tuple(cnt[s][0])
+                    end = tuple(cnt[e][0])
+                    far = tuple(cnt[f][0])
+                    cv2.line(image,start,end,[0,255,0],2)
+                    cv2.circle(image,far,5,[0,0,255],-1)
         # cnt = contours[4]
         # cv2.drawContours(image, [cnt], -1, (255,0,0), 3)
-        showImageWithDelay(image, 1000)
+        showImageWithDelay(image, 3000)
 
 else:
 	sys.exit("The path name does not exist")
