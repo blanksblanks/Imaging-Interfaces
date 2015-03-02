@@ -49,7 +49,7 @@ def write_file_to_disk():
         camera.release()
         # read the fresh sequence of gestures
         ''' TODO: link these classes properly instead of hijacking os system '''
-        os.system("python gesturereader.py " + dir_name)
+        os.system("python visuallock.py " + dir_name)
     else:
         open_camera_feed()
 
