@@ -1,7 +1,7 @@
 import cv2, os, sys, time
 import numpy as np
+from numpy import linalg as la
 from matplotlib import pyplot as plt
-# import matplotlib.pyplot as plt
 
 # ============================================================
 # Data Reduction
@@ -244,21 +244,11 @@ def main():
         for el in imfilelist:
             sys.stdout.write(el)
             image = cv2.imread(el, cv2.IMREAD_COLOR) # load original
+            print el, '\n', image, '\n\n'
+            pixels = list(image)
+            print pixels
             titles.append(el[9:-4])
             images.append(image)
-            # show(image, 1000)
-            # # image = resize(image)
-            # # save(image, el[:-4]+'_resized.png')
-            # # image = grayscale(image)
-            # # save(image, el[:-4]+'_grayscale.png')
-            # # image = binarize(image)
-            # # save(image, el[:-4]+'_binarized.png')
-            # # image = close(image)
-            # # save(image, el[:-4]+'_closed.png')
-            # # image,combo = contour_reader(image)
-            # # save(image, el[:-4]+'_contours.png')
-            # # combination.append(combo)
-            # print ' >> ' + combo[0] + ', ' + combo[1]
         for i in xrange(40):
             plt.subplot(5,8,i+1),plt.imshow(cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)) # row, col
             plt.title(titles[i], size=12)
@@ -267,6 +257,7 @@ def main():
 
     else:
         sys.exit("The path name does not exist")
+
 
     # print combination
     # decision = authenticate(combination)
