@@ -1,5 +1,6 @@
 import cv2, os, sys, time
 import numpy as np
+from matplotlib import pyplot as plt
 # import matplotlib.pyplot as plt
 
 # ============================================================
@@ -232,7 +233,8 @@ def main():
     imageformat=".ppm"
     path = "./" + sys.argv[1]
 
-    combination = []
+    images = []
+    titles = []
 
     # load image sequence
     if os.path.exists(path):
@@ -242,7 +244,9 @@ def main():
         for el in imfilelist:
             sys.stdout.write(el)
             image = cv2.imread(el, cv2.IMREAD_COLOR) # load original
-            show(image, 1000)
+            titles.append(el[9:])
+            images.append(image)
+            # show(image, 1000)
             # # image = resize(image)
             # # save(image, el[:-4]+'_resized.png')
             # # image = grayscale(image)
@@ -255,6 +259,11 @@ def main():
             # # save(image, el[:-4]+'_contours.png')
             # # combination.append(combo)
             # print ' >> ' + combo[0] + ', ' + combo[1]
+        for i in xrange(40):
+            plt.subplot(5,8,i+1),plt.imshow(images[i], 'spectral') # row, col
+            plt.title(titles[i])
+            plt.xticks([]),plt.yticks([])
+        plt.show()
 
     else:
         sys.exit("The path name does not exist")
