@@ -260,7 +260,7 @@ def main():
             # # combination.append(combo)
             # print ' >> ' + combo[0] + ', ' + combo[1]
         for i in xrange(40):
-            plt.subplot(5,8,i+1),plt.imshow(images[i], 'spectral') # row, col
+            plt.subplot(5,8,i+1),plt.imshow(cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)) # row, col
             plt.title(titles[i])
             plt.xticks([]),plt.yticks([])
         plt.show()
