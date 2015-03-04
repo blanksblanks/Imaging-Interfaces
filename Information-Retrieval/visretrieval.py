@@ -244,7 +244,7 @@ def main():
         for el in imfilelist:
             sys.stdout.write(el)
             image = cv2.imread(el, cv2.IMREAD_COLOR) # load original
-            titles.append(el[9:])
+            titles.append(el[9:-4])
             images.append(image)
             # show(image, 1000)
             # # image = resize(image)
@@ -261,7 +261,7 @@ def main():
             # print ' >> ' + combo[0] + ', ' + combo[1]
         for i in xrange(40):
             plt.subplot(5,8,i+1),plt.imshow(cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)) # row, col
-            plt.title(titles[i])
+            plt.title(titles[i], size=12)
             plt.xticks([]),plt.yticks([])
         plt.show()
 
