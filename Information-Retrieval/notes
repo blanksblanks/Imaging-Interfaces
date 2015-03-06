@@ -1,0 +1,10 @@
+notes:
+1. read all the images, process them
+2. histogram, by doing RGB counts
+3. make a pixel array of the image and count all the pixels
+4. dimension of the image: 89 x 60
+
+think about:
+1. how to ignore the black
+2. how many bins (256^3 is too much!)
+
