@@ -62,6 +62,7 @@ def ret_3dhistogram(image):
         # print 'c var', c
         print 'count', hist[r][g][b]
         print 'color', hexencode(c)
+        plt.xticks([])
         plt.bar(idx, hist[r][g][b], color=hexencode(c), edgecolor=hexencode(c))
     plt.show()
     print '3d histogram:\n', hist
