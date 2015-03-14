@@ -30,7 +30,9 @@ def show(image, wait):
     cv2.waitKey(wait)
     cv2.imshow('Image', image)
 
+# NO LONGER NEEDED
 def entitle(idx):
+    """Convert image index and return image title."""
     if idx > 8:
         idx = 'i' + str(idx+1)
     else:
@@ -167,8 +169,7 @@ def main():
     for i in xrange(7): # only do first 10 images for now
         index = cresults[i]
         plt.subplot(10,7,i+1),plt.imshow(cv2.cvtColor(images[index], cv2.COLOR_BGR2RGB)) # row, col
-        index = entitle(index)
-        plt.title(index, size=12)
+        plt.title(titles[index], size=12)
         plt.xticks([]),plt.yticks([])
     plt.savefig('foo.png', bbox_inches='tight')
     plt.show()
