@@ -52,7 +52,6 @@ def ret_3dhistogram(image):
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
                     # colors.append( (pixel[0],pixel[1],pixel[2]) )
-
     colors = sorted(colors, key=lambda c: -hist[(c[0])][(c[1])][(c[2])])
 
     for idx, c in enumerate(colors):
@@ -62,10 +61,25 @@ def ret_3dhistogram(image):
         # print 'c var', c
         print 'count', hist[r][g][b]
         print 'color', hexencode(c)
-        plt.xticks([])
-        plt.bar(idx, hist[r][g][b], color=hexencode(c), edgecolor=hexencode(c))
-    plt.show()
+        plt.subplot(1,2,1).bar(idx, hist[r][g][b], color=hexencode(c), edgecolor=hexencode(c))
+        plt.xticks([]),plt.xlabel('color bins'),plt.ylabel('frequency count')
+        plt.subplot(1,2,2),plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        plt.xticks([]),plt.yticks([])
+    # plt.show()
     print '3d histogram:\n', hist
+    return hist
+
+def l1_color_norm(h1, h2):
+    diff = 0
+    sum = 0
+    for r in xrange(0, BINS):
+        for g in xrange(0, BINS):
+            for b in range(0, BINS):
+                diff += abs(h1[r][g][b] - h2[r][g][b])
+                sum += h1[r][g][b] + h2[r][g][b]
+    distance = diff / 2.0 / sum
+    print 'diff, count and distance:', diff, sum, distance
+    return distance
 
 # ============================================================
 # Main Method
@@ -80,6 +94,10 @@ def main():
 
     images = []
     titles = []
+    chists = []
+    results = {}
+    cbest = []
+    cworst = []
 
     # load image sequence
     if os.path.exists(path):
@@ -91,9 +109,10 @@ def main():
             image = cv2.imread(el, cv2.IMREAD_UNCHANGED) # load original
             # print el, '\n', image, '\n\n'
             # pixels = list(image)
-            ret_3dhistogram(image)
-            # titles.append(el[9:-4])
-        #     images.append(image)
+            chist = ret_3dhistogram(image)
+            titles.append(el[9:-4])
+            images.append(image)
+            chists.append(chist)
         # for i in xrange(40):
         #     plt.subplot(5,8,i+1),plt.imshow(cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)) # row, col
         #     plt.title(titles[i], size=12)
@@ -103,10 +122,41 @@ def main():
     else:
         sys.exit("The path name does not exist")
 
+    # deterine 4 closest and 4 farthest matches for first image
+    for i in xrange(0, len(imfilelist)):
+        d = l1_color_norm(chists[0], chists[i]);
+        results[i] = d;
 
-    # print combination
-    # decision = authenticate(combination)
-    # print decision
+    results = sorted([(v, k) for (k, v) in results.items()])
+    print results
+    # return a list of tuples (similarity, index)
+    # ordered from most similar to least similar
+    # ignore first value - it will be the same image as the one being compared to
+
+    for i in xrange(0,4):
+        b = (results[i])[1]
+        cbest.append(b)
+        if i > 0:
+            w = (results[-i])[1]
+            cworst.append(w)
+        # print "b,w: ", b,w
+
+    print "cbest, cworst", cbest, cworst
+    results = cbest
+    results.extend(cworst)
+    print "results", results
+
+    for i in xrange(7):
+        index = results[i]
+        plt.subplot(1,7,i+1),plt.imshow(cv2.cvtColor(images[index], cv2.COLOR_BGR2RGB)) # row, col
+        if index > 8:
+            index = 'i' + str(index+1)
+        else:
+            index = 'i0' + str(index+1)
+        plt.title(index, size=12)
+        plt.xticks([]),plt.yticks([])
+    plt.show()
+
 
     time.sleep(5)
 
