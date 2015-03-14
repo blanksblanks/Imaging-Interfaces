@@ -1,17 +1,23 @@
-import cv2, os, sys, time
-import PIL
-from PIL import Image
+import os
+import sys
+import time
+import cv2
 import numpy as np
-from numpy import linalg as la
 from matplotlib import pyplot as plt
+
+# import PIL
+# from PIL import Image
+# from numpy import linalg as la
+
 
 # ============================================================
 # Constants
 # ============================================================
 
-BINS = 8
-BINSIZE = int(256/BINS)
+COL_RANGE = 256
 BLK_THRESH = 40
+BINS = 8
+BIN_SIZE = int(COL_RANGE/BINS)
 
 # ============================================================
 # Helper Functions
@@ -24,14 +30,22 @@ def show(image, wait):
     cv2.waitKey(wait)
     cv2.imshow('Image', image)
 
+def entitle(idx):
+    if idx > 8:
+        idx = 'i' + str(idx+1)
+    else:
+        idx = 'i0' + str(idx+1)
+    return idx
+
 # ============================================================
 # 3D histogram
 # ============================================================
 
-def hexencode(rgb):
-    r = rgb[0]*BINSIZE
-    g = rgb[1]*BINSIZE
-    b = rgb[2]*BINSIZE
+def hexencode(rgb, factor):
+    """Convert RGB tuple to hexadecimal color code."""
+    r = rgb[0]*factor
+    g = rgb[1]*factor
+    b = rgb[2]*factor
     return '#%02x%02x%02x' % (r,g,b)
 
 def ret_3dhistogram(image):
@@ -44,9 +58,9 @@ def ret_3dhistogram(image):
         for j in xrange(0, w): # width
             pixel = image[i][j]
             if pixel[0] > BLK_THRESH and pixel[1] > BLK_THRESH and pixel[2] > BLK_THRESH:
-                r_bin = pixel[2] / BINSIZE # openCV loads as BGR
-                g_bin = pixel[1] / BINSIZE
-                b_bin = pixel[0] / BINSIZE
+                r_bin = pixel[2] / BIN_SIZE # openCV loads as BGR
+                g_bin = pixel[1] / BIN_SIZE
+                b_bin = pixel[0] / BIN_SIZE
                 # 'RGB bins + 1', r_bin, g_bin, b_bin
                 hist[r_bin][g_bin][b_bin] += 1
                 if (r_bin,g_bin,b_bin) not in colors:
@@ -55,13 +69,13 @@ def ret_3dhistogram(image):
     colors = sorted(colors, key=lambda c: -hist[(c[0])][(c[1])][(c[2])])
 
     for idx, c in enumerate(colors):
-        r = c[0]#/BINSIZE
-        g = c[1]#/BINSIZE
-        b = c[2]#/BINSIZE
+        r = c[0]#/BIN_SIZE
+        g = c[1]#/BIN_SIZE
+        b = c[2]#/BIN_SIZE
         # print 'c var', c
         print 'count', hist[r][g][b]
-        print 'color', hexencode(c)
-        plt.subplot(1,2,1).bar(idx, hist[r][g][b], color=hexencode(c), edgecolor=hexencode(c))
+        print 'color', hexencode(c, BIN_SIZE)
+        plt.subplot(1,2,1).bar(idx, hist[r][g][b], color=hexencode(c, BIN_SIZE), edgecolor=hexencode(c, BIN_SIZE))
         plt.xticks([]),plt.xlabel('color bins'),plt.ylabel('frequency count')
         plt.subplot(1,2,2),plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         plt.xticks([]),plt.yticks([])
@@ -78,7 +92,7 @@ def l1_color_norm(h1, h2):
                 diff += abs(h1[r][g][b] - h2[r][g][b])
                 sum += h1[r][g][b] + h2[r][g][b]
     distance = diff / 2.0 / sum
-    print 'diff, count and distance:', diff, sum, distance
+    # print 'diff, count and distance:', diff, sum, distance
     return distance
 
 # ============================================================
@@ -150,15 +164,13 @@ def main():
         cresults.extend(results)
         print "cresults", cresults
 
-    for i in xrange(7*10): # only do first 10 images for now
+    for i in xrange(7): # only do first 10 images for now
         index = cresults[i]
         plt.subplot(10,7,i+1),plt.imshow(cv2.cvtColor(images[index], cv2.COLOR_BGR2RGB)) # row, col
-        if index > 8:
-            index = 'i' + str(index+1)
-        else:
-            index = 'i0' + str(index+1)
+        index = entitle(index)
         plt.title(index, size=12)
         plt.xticks([]),plt.yticks([])
+    plt.savefig('foo.png', bbox_inches='tight')
     plt.show()
 
 
