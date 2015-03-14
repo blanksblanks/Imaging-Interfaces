@@ -66,7 +66,7 @@ def ret_3dhistogram(image):
         plt.subplot(1,2,2),plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         plt.xticks([]),plt.yticks([])
     # plt.show()
-    print '3d histogram:\n', hist
+    # print '3d histogram:\n', hist
     return hist
 
 def l1_color_norm(h1, h2):
@@ -95,9 +95,7 @@ def main():
     images = []
     titles = []
     chists = []
-    results = {}
-    cbest = []
-    cworst = []
+    cresults = []
 
     # load image sequence
     if os.path.exists(path):
@@ -122,33 +120,39 @@ def main():
     else:
         sys.exit("The path name does not exist")
 
-    # deterine 4 closest and 4 farthest matches for first image
-    for i in xrange(0, len(imfilelist)):
-        d = l1_color_norm(chists[0], chists[i]);
-        results[i] = d;
+    # deterine 4 closest and 4 farthest matches for all images
+    for k in xrange(len(imfilelist)):
+        results = {} # reinitialize
+        cbest = []
+        cworst = []
+        for i in xrange(0, len(imfilelist)):
+            d = l1_color_norm(chists[k], chists[i]);
+            results[i] = d;
 
-    results = sorted([(v, k) for (k, v) in results.items()])
-    print results
-    # return a list of tuples (similarity, index)
-    # ordered from most similar to least similar
-    # ignore first value - it will be the same image as the one being compared to
+        results = sorted([(v, k) for (k, v) in results.items()])
+        print results
+        # return a list of tuples (similarity, index)
+        # ordered from most similar to least similar
+        # ignore first value - it will be the same image as the one being compared to
 
-    for i in xrange(0,4):
-        b = (results[i])[1]
-        cbest.append(b)
-        if i > 0:
-            w = (results[-i])[1]
-            cworst.append(w)
-        # print "b,w: ", b,w
+        for i in xrange(0,4):
+            b = (results[i])[1]
+            cbest.append(b)
+            if i > 0:
+                w = (results[-i])[1]
+                cworst.append(w)
+            # print "b,w: ", b,w
 
-    print "cbest, cworst", cbest, cworst
-    results = cbest
-    results.extend(cworst)
-    print "results", results
+        print "cbest, cworst", cbest, cworst
+        results = cbest
+        results.extend(cworst)
+        print "results", results
+        cresults.extend(results)
+        print "cresults", cresults
 
-    for i in xrange(7):
-        index = results[i]
-        plt.subplot(1,7,i+1),plt.imshow(cv2.cvtColor(images[index], cv2.COLOR_BGR2RGB)) # row, col
+    for i in xrange(7*10): # only do first 10 images for now
+        index = cresults[i]
+        plt.subplot(10,7,i+1),plt.imshow(cv2.cvtColor(images[index], cv2.COLOR_BGR2RGB)) # row, col
         if index > 8:
             index = 'i' + str(index+1)
         else:
