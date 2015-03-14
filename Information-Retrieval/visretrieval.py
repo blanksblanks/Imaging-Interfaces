@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 # Constants
 # ============================================================
 
-BINS = 32
+BINS = 8
 BINSIZE = int(256/BINS)
 BLK_THRESH = 40
 
@@ -44,20 +44,21 @@ def ret_3dhistogram(image):
         for j in xrange(0, w): # width
             pixel = image[i][j]
             if pixel[0] > BLK_THRESH and pixel[1] > BLK_THRESH and pixel[2] > BLK_THRESH:
-                r_bin = pixel[0] / BINSIZE
+                r_bin = pixel[2] / BINSIZE # openCV loads as BGR
                 g_bin = pixel[1] / BINSIZE
-                b_bin = pixel[2] / BINSIZE
+                b_bin = pixel[0] / BINSIZE
                 # 'RGB bins + 1', r_bin, g_bin, b_bin
                 hist[r_bin][g_bin][b_bin] += 1
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
+                    # colors.append( (pixel[0],pixel[1],pixel[2]) )
 
     colors = sorted(colors, key=lambda c: -hist[(c[0])][(c[1])][(c[2])])
 
     for idx, c in enumerate(colors):
-        r = c[0]
-        g = c[1]
-        b = c[2]
+        r = c[0]#/BINSIZE
+        g = c[1]#/BINSIZE
+        b = c[2]#/BINSIZE
         # print 'c var', c
         print 'count', hist[r][g][b]
         print 'color', hexencode(c)
