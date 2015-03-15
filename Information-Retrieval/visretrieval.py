@@ -110,30 +110,36 @@ def color_matches(k, chists):
     chists -- the list of color histograms for analysis
     """
     results = {}
+    indices = []
     cbest = []
     cworst = []
+    bestdiff = 0
+    worstdiff = 0
 
     for i in xrange(0, NUM_IM):
-        d = l1_color_norm(chists[k], chists[i]);
-        results[i] = d;
+        d = l1_color_norm(chists[k], chists[i])
+        results[i] = d
     # Ordered list of tuples (dist, idx) from most to least similar
     # -- first value will be the original image with diff of 0
     results = sorted([(v, k) for (k, v) in results.items()])
-    # print results
+    print 'results for image', k, results
 
     for i in xrange(0,4):
-        b = (results[i])[1]
-        cbest.append(b)
+        b = (results[i])
+        cbest.append(b[1])
+        bestdiff += b[0]
         if i > 0:
-            w = (results[-i])[1]
-            cworst.append(w)
+            w = (results[-i])
+            cworst.append(w[1])
+            worstdiff += w[0]
 
     # List of indices for original, 3 most, and 3 least similar image(s)
-    results = cbest
-    results.extend(cworst)
+    indices.extend(cbest)
+    indices.extend(cworst)
     # print "cbest, cworst", cbest, cworst
-    # print "results", results
-    return results
+    # print "indices", indices
+    return indices, bestdiff, worstdiff
+
 
 # ============================================================
 # Main Method
@@ -151,6 +157,8 @@ def main():
     titles = []
     chists = []
     cresults = []
+    like = 1
+    unlike = 0
 
     # load image sequence
     if os.path.exists(path):
@@ -170,10 +178,15 @@ def main():
 
     # determine 4 closest and 4 farthest matches for all images
     for k in xrange(NUM_IM):
-        results = color_matches(k, chists)
+        results, bestdiff, worstdiff = color_matches(k, chists)
         cresults.extend(results)
+        if bestdiff < like:
+            like = k
+        if worstdiff > unlike:
+            unlike = k
 
-    print "Gross color matching results", cresults
+    print "Gross color matching results:", cresults
+    print "Most like, most unlike:", like, unlike
 
     for i in xrange(7*10): # only do first 10 images for now
         index = cresults[i]
