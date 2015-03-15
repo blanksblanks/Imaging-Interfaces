@@ -56,7 +56,7 @@ def visualize_hist(image, hist, colors, title):
     plt.savefig(title, bbox_inches='tight')
     plt.clf()
     plot = cv2.imread(title, cv2.IMREAD_UNCHANGED)
-    show(plot, 500)
+    show(plot, 100)
     # clear image
 
     # print '3d histogram:\n', hist
@@ -104,7 +104,18 @@ def l1_color_norm(h1, h2):
     # print 'diff, sum and distance:', diff, sum, distance
     return distance
 
-def color_matches(k, chists):
+def calc_distance(chists):
+    chist_dis = {}
+    for i in xrange(0, NUM_IM):
+        for j in xrange(0, NUM_IM):
+            if (i,j) not in chist_dis:
+                d = l1_color_norm(chists[i], chists[j])
+                chist_dis[(i,j)] = d
+    print chist_dis
+    return chist_dis
+
+
+def color_matches(k, chist_dis):
     """Find images most like and unlike an image based on color distribution.
     k -- the original image for comparison
     chists -- the list of color histograms for analysis
@@ -117,12 +128,11 @@ def color_matches(k, chists):
     worstdiff = 0
 
     for i in xrange(0, NUM_IM):
-        d = l1_color_norm(chists[k], chists[i])
-        results[i] = d
+        results[i] = chist_dis[(k,i)]
     # Ordered list of tuples (dist, idx) from most to least similar
     # -- first value will be the original image with diff of 0
     results = sorted([(v, k) for (k, v) in results.items()])
-    print 'results for image', k, results
+    # print 'results for image', k, results
 
     for i in xrange(0,4):
         b = (results[i])
@@ -177,9 +187,12 @@ def main():
     else:
         sys.exit("The path name does not exist")
 
+    # calculate lookup table for distances between image color histograms
+    chist_dis = calc_distance(chists)
+
     # determine 4 closest and 4 farthest matches for all images
     for k in xrange(NUM_IM):
-        results, bestdiff, worstdiff = color_matches(k, chists)
+        results, bestdiff, worstdiff = color_matches(k, chist_dis)
         cresults.extend(results)
         if bestdiff < like:
             like = k
