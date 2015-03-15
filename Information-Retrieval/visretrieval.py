@@ -39,6 +39,14 @@ def entitle(idx):
         idx = 'i0' + str(idx+1)
     return idx
 
+def display_all(images, titles):
+    for i in xrange(40):
+        plt.subplot(5,8,i+1),plt.imshow(cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)) # row, col
+        plt.title(titles[i], size=12)
+        plt.xticks([]),plt.yticks([])
+    plt.show()
+
+
 # ============================================================
 # 3D histogram
 # ============================================================
@@ -54,27 +62,26 @@ def ret_3dhistogram(image):
     colors = []
     h = len(image)
     w = len(image[0])
-    print 'height and width', h, w
-    hist = np.zeros(shape=(BINS, BINS, BINS)) # 8 the number of color bins
-    for i in xrange(0, h): # height
-        for j in xrange(0, w): # width
+    hist = np.zeros(shape=(BINS, BINS, BINS))
+    for i in xrange(h): # height
+        for j in xrange(w): # width
             pixel = image[i][j]
             if pixel[0] > BLK_THRESH and pixel[1] > BLK_THRESH and pixel[2] > BLK_THRESH:
-                r_bin = pixel[2] / BIN_SIZE # openCV loads as BGR
+                r_bin = pixel[2] / BIN_SIZE # OpenCV loads as BGR
                 g_bin = pixel[1] / BIN_SIZE
                 b_bin = pixel[0] / BIN_SIZE
-                # 'RGB bins + 1', r_bin, g_bin, b_bin
                 hist[r_bin][g_bin][b_bin] += 1
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
-                    # colors.append( (pixel[0],pixel[1],pixel[2]) )
-    colors = sorted(colors, key=lambda c: -hist[(c[0])][(c[1])][(c[2])])
+    visualize_hist(colors, hist, image)
+    return hist
 
+def visualize_hist(colors, hist, image):
+    colors = sorted(colors, key=lambda c: -hist[(c[0])][(c[1])][(c[2])])
     for idx, c in enumerate(colors):
-        r = c[0]#/BIN_SIZE
-        g = c[1]#/BIN_SIZE
-        b = c[2]#/BIN_SIZE
-        # print 'c var', c
+        r = c[0]
+        g = c[1]
+        b = c[2]
         print 'count', hist[r][g][b]
         print 'color', hexencode(c, BIN_SIZE)
         plt.subplot(1,2,1).bar(idx, hist[r][g][b], color=hexencode(c, BIN_SIZE), edgecolor=hexencode(c, BIN_SIZE))
@@ -83,7 +90,8 @@ def ret_3dhistogram(image):
         plt.xticks([]),plt.yticks([])
     # plt.show()
     # print '3d histogram:\n', hist
-    return hist
+
+
 
 def l1_color_norm(h1, h2):
     diff = 0
@@ -127,14 +135,10 @@ def main():
             titles.append(el[9:-4])
             images.append(image)
             chists.append(chist)
-        # for i in xrange(40):
-        #     plt.subplot(5,8,i+1),plt.imshow(cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)) # row, col
-        #     plt.title(titles[i], size=12)
-        #     plt.xticks([]),plt.yticks([])
-        # plt.show()
-
     else:
         sys.exit("The path name does not exist")
+
+    display_all(images, titles)
 
     # deterine 4 closest and 4 farthest matches for all images
     for k in xrange(len(imfilelist)):
@@ -173,9 +177,6 @@ def main():
         plt.xticks([]),plt.yticks([])
     plt.savefig('foo.png', bbox_inches='tight')
     plt.show()
-
-
-    time.sleep(5)
 
 if __name__ == "__main__": main()
 
