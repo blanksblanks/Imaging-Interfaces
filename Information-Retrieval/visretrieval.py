@@ -47,7 +47,7 @@ def display_all(images, titles):
         plt.xticks([]),plt.yticks([])
     plt.show()
 
-def visualize_hist(image, hist, colors):
+def visualize_hist(image, hist, colors, title):
     colors = sorted(colors, key=lambda c: -hist[(c[0])][(c[1])][(c[2])])
     for idx, c in enumerate(colors):
         r = c[0]
@@ -55,10 +55,19 @@ def visualize_hist(image, hist, colors):
         b = c[2]
         # print 'color, count:', hexencode(c, BIN_SIZE), hist[r][g][b]
         plt.subplot(1,2,1).bar(idx, hist[r][g][b], color=hexencode(c, BIN_SIZE), edgecolor=hexencode(c, BIN_SIZE))
-        plt.xticks([]),plt.xlabel('color bins'),plt.ylabel('frequency count')
+        plt.xticks([])
         plt.subplot(1,2,2),plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         plt.xticks([]),plt.yticks([])
-    # plt.show()
+    dir_name = './color_hist/'
+    if not os.path.exists(dir_name):
+        of.makedirs(dir_name)
+    title = dir_name+title+'.png'
+    plt.savefig(title, bbox_inches='tight')
+    plt.clf()
+    plot = cv2.imread(title, cv2.IMREAD_UNCHANGED)
+    show(plot, 500)
+    # clear image
+
     # print '3d histogram:\n', hist
 
 
@@ -73,7 +82,7 @@ def hexencode(rgb, factor):
     b = rgb[2]*factor
     return '#%02x%02x%02x' % (r,g,b)
 
-def color_histogram(image):
+def color_histogram(image, title):
     colors = []
     h = len(image)
     w = len(image[0])
@@ -88,7 +97,7 @@ def color_histogram(image):
                 hist[r_bin][g_bin][b_bin] += 1
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
-    visualize_hist(image, hist, colors)
+    visualize_hist(image, hist, colors, title)
     return hist
 
 def l1_color_norm(h1, h2):
@@ -169,8 +178,9 @@ def main():
         for el in imfilelist:
             print(el)
             image = cv2.imread(el, cv2.IMREAD_UNCHANGED)
-            chist = color_histogram(image)
-            titles.append(el[9:-4])
+            title = el[9:-4]
+            chist = color_histogram(image, title)
+            titles.append(title)
             images.append(image)
             chists.append(chist)
     else:
