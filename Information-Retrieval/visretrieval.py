@@ -31,15 +31,6 @@ def show(image, wait):
     cv2.waitKey(wait)
     cv2.imshow('Image', image)
 
-# NO LONGER NEEDED
-def entitle(idx):
-    """Convert image index and return image title."""
-    if idx > 8:
-        idx = 'i' + str(idx+1)
-    else:
-        idx = 'i0' + str(idx+1)
-    return idx
-
 def display_all(images, titles):
     for i in xrange(NUM_IM):
         plt.subplot(5,8,i+1),plt.imshow(cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)) # row, col
