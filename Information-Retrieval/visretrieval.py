@@ -43,7 +43,7 @@ def display_all(images, titles):
 
 def visualize_hist(image, hist, colors, title):
     colors = sorted(colors, key=lambda c: -hist[(c[0])][(c[1])][(c[2])])
-    plt.figure(figsize=(6.85, 5.18), dpi=100)
+    plt.rcParams['font.family']='Aller Light'
     for idx, c in enumerate(colors):
         r = c[0]
         g = c[1]
@@ -57,8 +57,9 @@ def visualize_hist(image, hist, colors, title):
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
     title = dir_name+title+'.png'
-    plt.savefig(title, bbox_inches='tight', dpi=100)
+    plt.savefig(title, bbox_inches='tight')
     plt.clf()
+    plt.close('all')
     print title
     # plot = cv2.imread(title, cv2.IMREAD_UNCHANGED)
     # show(plot, 100)
@@ -119,6 +120,8 @@ def septuple_stitch(images, titles, dir_name, cresults):
         # plt.savefig('firstseries.png', bbox_inches='tight')
         # plt.show()
         plt.clf()
+        plt.close('all')
+
 
 # ============================================================
 # Gross Color Matching
@@ -146,7 +149,7 @@ def color_histogram(image, title):
                 hist[r_bin][g_bin][b_bin] += 1
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
-    visualize_hist(image, hist, colors, title)
+    # visualize_hist(image, hist, colors, title)
     return hist
 
 def l1_color_norm(h1, h2):
@@ -164,8 +167,8 @@ def l1_color_norm(h1, h2):
 
 def calc_distance(chists):
     chist_dis = {}
-    for i in xrange(0, NUM_IM):
-        for j in xrange(0, NUM_IM):
+    for i in xrange(NUM_IM):
+        for j in xrange(i, NUM_IM):
             if (i,j) not in chist_dis:
                 d = l1_color_norm(chists[i], chists[j])
                 chist_dis[(i,j)] = d
@@ -180,13 +183,19 @@ def color_matches(k, chist_dis):
     """
     results = {}
     indices = []
+    distances = []
     cbest = []
+    cbestd = []
     cworst = []
+    cworstd = []
     bestdiff = 0
     worstdiff = 0
 
     for i in xrange(0, NUM_IM):
-        results[i] = chist_dis[(k,i)]
+        if k > i: # because tuples always begin with lower index
+            results[i] = chist_dis[(i,k)]
+        else:
+            results[i] = chist_dis[(k,i)]
     # Ordered list of tuples (dist, idx) from most to least similar
     # -- first value will be the original image with diff of 0
     results = sorted([(v, k) for (k, v) in results.items()])
@@ -195,10 +204,12 @@ def color_matches(k, chist_dis):
     for i in xrange(0,4):
         b = (results[i])
         cbest.append(b[1])
+        cbestd.append(b[0])
         bestdiff += b[0]
         if i > 0:
             w = (results[-i])
             cworst.append(w[1])
+            cworstd.append(w[0])
             worstdiff += w[0]
 
     # List of indices for original, 3 most, and 3 least similar image(s)
