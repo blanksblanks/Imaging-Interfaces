@@ -66,59 +66,32 @@ def visualize_hist(image, hist, colors, title):
     # show(plot, 100)
     # clear image
 
-    # print '3d histogram:\n', hist
+def pair_stitch_v(images1, images2, titles):
+    # note: must be same width
+    n = len(images1)
+    for i in xrange(0, n):
+        img = np.concatenate((images1[i], images2[i]), axis=0)
+        path = './'+titles[i]+'.png'
+        cv2.imwrite(path, img)
 
-def pic_stitch(series, images, titles):
-    n = len(series)
-    # for k in xrange(0, n, 7):
-    #     title = titles[k]
-    #     for i in xrange(1, 7):
-    #         idx = series[i]
-    #         if i == 1:
-    #             prior = series[i-1]
-    #             img = np.concatenate((images[prior], images[idx]), axis=1)
-    #         else:
-    #             img = np.concatenate((img, images[idx]))
-    #     dir_name = './color_matches/'
-    #     if not os.path.exists(dir_name):
-    #         os.makedirs(dir_name)
-    #     cv2.imwrite(dir_name+title+'.png', img)
-
-
-    im = Image.new('RGB',(IMG_W*7,IMG_H))
-    for i in xrange(n):
-        title = titles[i]
-        idx = series[i]
-        img = images[i] # Image.open('./images/'+title+'.ppm')
-        im.paste(img, (i*IMG_W,0))
-    dir_name = './color_matches/'
-    if not os.path.exists(dir_name):
-        os.makedirs(dir_name)
-    im.save(dir_name+title+'.jpg','JPEG')
-
-def septuple_stitch(images, chist_images, titles, dir_name, cresults, cdistances):
+def septuple_stitch_h(images, titles, dir_name, cresults, cdistances):
     plt.rcParams['font.family']='Aller Light'
-    gs1 = gridspec.GridSpec(2,7)
+    gs1 = gridspec.GridSpec(1,7)
     gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
     for k in xrange(0, NUM_IM*7, 7):
         for i in xrange(7):
             idx = cresults[k+i]
             ax = plt.subplot(gs1[i])
-            ax.imshow(cv2.cvtColor(chist_images[idx], cv2.COLOR_BGR2RGB))
-            ax.set_xticks([]),ax.set_yticks([])
-
-            ax = plt.subplot(gs1[i+7])
             plt.axis('on')
-            # plt.subplot(10,7,i+1)
             plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
-            plt.title(titles[idx], size=12)
-            # plt.title(titles[idx], size=12)
             plt.xticks([]),plt.yticks([])
-            if i == 0:
-                plt.xlabel('similarity:')
-            else:
-                sim = 1 - round(cdistances[k+i], 5)
-                plt.xlabel(sim)
+            if cdistances:
+                if i == 0:
+                    plt.xlabel('similarity:')
+                else:
+                    sim = 1 - round(cdistances[k+i], 5)
+                    plt.xlabel(sim)
+                plt.title(titles[idx], size=12)
             ax.set_aspect('equal')
 
         title = titles[k/7]
@@ -127,11 +100,30 @@ def septuple_stitch(images, chist_images, titles, dir_name, cresults, cdistances
         title = dir_name+title+'.png'
         plt.savefig(title, bbox_inches='tight')
         print title
-        # plt.savefig('firstseries.png', bbox_inches='tight')
-        # plt.show()
         plt.clf()
         plt.close('all')
 
+def four_stitch_h(images, titles, cresults):
+    plt.rcParams['font.family']='Aller Light'
+    gs1 = gridspec.GridSpec(1,4)
+    gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
+    for k in xrange(0,8,4):
+        for i in xrange(4):
+            idx = cresults[i+k]
+            ax = plt.subplot(gs1[i])
+            plt.axis('on')
+            plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
+            plt.xticks([]),plt.yticks([])
+            plt.title(titles[idx], size=12)
+            ax.set_aspect('equal')
+        if k is 0:
+            title = './best_match.png'
+        else:
+            title = './worst_match.png'
+        plt.savefig(title, bbox_inches='tight')
+        print title
+        plt.clf()
+        plt.close('all')
 
 # ============================================================
 # Gross Color Matching
@@ -159,8 +151,8 @@ def color_histogram(image, title):
                 hist[r_bin][g_bin][b_bin] += 1
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
-    plot = visualize_hist(image, hist, colors, title)
-    return hist, plot
+    # plot = visualize_hist(image, hist, colors, title)
+    return hist
 
 def l1_color_norm(h1, h2):
     diff = 0
@@ -216,22 +208,27 @@ def color_matches(k, chist_dis):
     bestdiff = reduce(lambda x, y: x+y, distances[:4])
     worstdiff = reduce(lambda x, y: x+y, distances[-3:])
 
-    # for i in xrange(0,4):
-    #     b = (results[i])
-    #     cbest.append(b[1])
-    #     cbestd.append(b[0])
-    #     bestdiff += b[0]
-    #     if i > 0:
-    #         w = (results[-i])
-    #         cworst.append(w[1])
-    #         worstdiff += w[0]
-
-    # List of indices for original, 3 most, and 3 least similar image(s)
-    # indices.extend(cbest)
-    # indices.extend(cworst)
-    # print "cbest, cworst", cbest, cworst
-    # print "indices", indices
     return indices, distances, bestdiff, worstdiff
+
+def find_four(chist_dis):
+    results = {}
+    for a in xrange(NUM_IM):
+        for b in xrange(NUM_IM):
+            for c in xrange(NUM_IM):
+                for d in xrange(NUM_IM):
+                    if (a<b and b<c and c<d):
+                        results[(a,b,c,d)] = chist_dis[(a,b)] + chist_dis[(a,c)] + chist_dis[(a,d)] + chist_dis[(b,c)] + chist_dis[(b,d)] + chist_dis[(c,d)]
+    results = sorted([(v, k) for (k, v) in results.items()])
+    best = results[0]
+    worst = results[-1]
+    print "results: ", len(results), results
+    print "best, worst", best, worst
+    best = list(best[1])
+    worst = list(worst[1])
+    indices = best
+    indices.extend(worst)
+    return indices
+
 
 # ============================================================
 # Main Method
@@ -264,11 +261,11 @@ def main():
             print(el)
             image = cv2.imread(el, cv2.IMREAD_UNCHANGED)
             title = el[9:-4]
-            chist, plot = color_histogram(image, title)
+            chist = color_histogram(image, title)
             titles.append(title)
             images.append(image)
             chists.append(chist)
-            chist_images.append(plot)
+            # chist_images.append(plot)
     else:
         sys.exit("The path name does not exist")
 
@@ -287,11 +284,14 @@ def main():
 
     print "Gross color matching results:", cresults
     print "Most like, most unlike:", like, unlike
+    cfour = find_four(chist_dis)
+    four_stitch_h(images, titles, cfour)
 
     # for i in xrange(NUM_IM):
     #     pic_stitch(cresults[i], images, titles)
-    septuple_stitch(images, chist_images, titles, './color_sim_hist/', cresults, cdistances)
-    # septuple_stitch(chist_images, titles, './color_hist_sim/', cresults, cdistances)
+    # septuple_stitch_h(images, titles, './color_sim/', cresults, cdistances)
+    # septuple_stitch_h(chist_images, titles, './color_hist_sim_untitled/', cresults, None)
+    # pair_stitch_v(images, chist_images, titles, './color_sims')
 
 
 if __name__ == "__main__": main()
