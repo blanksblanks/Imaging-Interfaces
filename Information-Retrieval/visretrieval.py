@@ -174,8 +174,8 @@ def calc_distance(chists):
             if (i,j) not in chist_dis:
                 d = l1_color_norm(chists[i], chists[j])
                 chist_dis[(i,j)] = d
-    print chist_dis
-    return chist_dis
+    # print chist_dis
+    # return chist_dis
 
 
 def color_matches(k, chist_dis):
@@ -186,8 +186,6 @@ def color_matches(k, chist_dis):
     results = {}
     indices = []
     distances = []
-    bestdiff = 0
-    worstdiff = 0
 
     for i in xrange(0, NUM_IM):
         if k > i: # because tuples always begin with lower index
@@ -205,10 +203,10 @@ def color_matches(k, chist_dis):
     distances, indices = zip(*seven)
     # print 'distances:',distances
     # print 'indices:',indices
-    bestdiff = reduce(lambda x, y: x+y, distances[:4])
-    worstdiff = reduce(lambda x, y: x+y, distances[-3:])
+    # bestdiff = reduce(lambda x, y: x+y, distances[:4])
+    # worstdiff = reduce(lambda x, y: x+y, distances[-3:])
 
-    return indices, distances, bestdiff, worstdiff
+    return indices, distances
 
 def find_four(chist_dis):
     results = {}
@@ -221,12 +219,10 @@ def find_four(chist_dis):
     results = sorted([(v, k) for (k, v) in results.items()])
     best = results[0]
     worst = results[-1]
-    print "results: ", len(results), results
-    print "best, worst", best, worst
-    best = list(best[1])
-    worst = list(worst[1])
-    indices = best
-    indices.extend(worst)
+    indices = list(best[1])
+    indices.extend(list(worst[1]))
+    # print "results: ", len(results), results
+    # print "best, worst", best, worst
     return indices
 
 
@@ -248,8 +244,6 @@ def main():
     chist_images = []
     cresults = []
     cdistances = []
-    like = 1
-    unlike = 0
 
     # load image sequence
     if os.path.exists(path):
@@ -274,17 +268,13 @@ def main():
 
     # determine 4 closest and 4 farthest matches for all images
     for k in xrange(NUM_IM):
-        results, distances, bestdiff, worstdiff = color_matches(k, chist_dis)
+        results, distances = color_matches(k, chist_dis)
         cresults.extend(results)
         cdistances.extend(distances)
-        if bestdiff < like:
-            like = k
-        if worstdiff > unlike:
-            unlike = k
 
-    print "Gross color matching results:", cresults
-    print "Most like, most unlike:", like, unlike
+    # print "Gross color matching results:", cresults
     cfour = find_four(chist_dis)
+    # cfour = [0,9,37,15,2,30,5,14]
     four_stitch_h(images, titles, cfour)
 
     # for i in xrange(NUM_IM):
