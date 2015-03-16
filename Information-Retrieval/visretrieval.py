@@ -51,8 +51,8 @@ def visualize_hist(image, hist, colors, title):
         # print 'color, count:', hexencode(c, BIN_SIZE), hist[r][g][b]
         plt.subplot(1,2,1).bar(idx, hist[r][g][b], color=hexencode(c, BIN_SIZE), edgecolor=hexencode(c, BIN_SIZE))
         plt.xticks([])
-        plt.subplot(1,2,2),plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        plt.xticks([]),plt.yticks([])
+        # plt.subplot(1,2,2),plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        # plt.xticks([]),plt.yticks([])
     dir_name = './color_hist/'
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
@@ -61,7 +61,8 @@ def visualize_hist(image, hist, colors, title):
     plt.clf()
     plt.close('all')
     print title
-    # plot = cv2.imread(title, cv2.IMREAD_UNCHANGED)
+    plot = cv2.imread(title, cv2.IMREAD_UNCHANGED)
+    return plot
     # show(plot, 100)
     # clear image
 
@@ -106,14 +107,13 @@ def septuple_stitch(images, titles, dir_name, cresults, cdistances):
             ax = plt.subplot(gs1[i])
             # plt.subplot(10,7,i+1)
             plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
-            sim = 1 - round(cdistances[k+i],3)
             plt.title(titles[idx], size=12)
-
             # plt.title(titles[idx], size=12)
             plt.xticks([])
             if i == 0:
                 plt.xlabel('similarity:')
             else:
+                sim = 1 - round(cdistances[k+i], 5)
                 plt.xlabel(sim)
             plt.yticks([])
             ax.set_aspect('equal')
@@ -155,8 +155,8 @@ def color_histogram(image, title):
                 hist[r_bin][g_bin][b_bin] += 1
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
-    # visualize_hist(image, hist, colors, title)
-    return hist
+    plot = visualize_hist(image, hist, colors, title)
+    return hist, plot
 
 def l1_color_norm(h1, h2):
     diff = 0
@@ -244,6 +244,7 @@ def main():
     images = []
     titles = []
     chists = []
+    chist_images = []
     cresults = []
     cdistances = []
     like = 1
@@ -252,18 +253,18 @@ def main():
     # load image sequence
     if os.path.exists(path):
         imfilelist=[os.path.join(path,f) for f in os.listdir(path) if f.endswith(format)]
-        if len(im
-            filelist) < 1:
+        if len(imfilelist) < 1:
         	sys.exit ("Need to specify a path containing .ppm files")
         NUM_IM = len(imfilelist)
         for el in imfilelist:
             print(el)
             image = cv2.imread(el, cv2.IMREAD_UNCHANGED)
             title = el[9:-4]
-            chist = color_histogram(image, title)
+            chist, plot = color_histogram(image, title)
             titles.append(title)
             images.append(image)
             chists.append(chist)
+            chist_images.append(plot)
     else:
         sys.exit("The path name does not exist")
 
@@ -286,7 +287,7 @@ def main():
     # for i in xrange(NUM_IM):
     #     pic_stitch(cresults[i], images, titles)
     septuple_stitch(images, titles, './color_sim/', cresults, cdistances)
-    # septuple_stitch(chists, titles, './color_hist_sim/', cresults, cdistances)
+    septuple_stitch(chist_images, titles, './color_hist_sim/', cresults, cdistances)
 
 
 if __name__ == "__main__": main()
