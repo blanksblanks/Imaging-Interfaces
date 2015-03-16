@@ -92,8 +92,31 @@ def pic_stitch(series, images, titles):
         os.makedirs(dir_name)
     im.save(dir_name+title+'.jpg','JPEG')
 
-
-
+def septuple_stitch(images, titles, dir_name, cresults):
+    plt.rcParams['font.family']='Aller Light'
+    gs1 = gridspec.GridSpec(1,7)
+    gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
+    for k in xrange(0, NUM_IM*7, 7):
+        for i in xrange(7): # only do first 10 images for now
+            idx = cresults[k+i]
+            # pos = idx%7
+            ax = plt.subplot(gs1[i])
+            # plt.subplot(10,7,i+1)
+            plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
+            plt.title(titles[idx], size=12)
+            plt.xticks([])
+            # plt.xlabel()
+            plt.yticks([])
+            ax.set_aspect('equal')
+        title = titles[k/7]
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+        title = dir_name+title+'.png'
+        plt.savefig(title, bbox_inches='tight')
+        print title
+        # plt.savefig('firstseries.png', bbox_inches='tight')
+        # plt.show()
+        plt.clf()
 
 # ============================================================
 # Gross Color Matching
@@ -236,30 +259,7 @@ def main():
 
     # for i in xrange(NUM_IM):
     #     pic_stitch(cresults[i], images, titles)
+    septuple_stitch(images, titles, './color_sim/', cresults)
 
-    plt.rcParams['font.family']='Aller Light'
-    gs1 = gridspec.GridSpec(1,7)
-    gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
-    for k in xrange(0, NUM_IM*7, 7):
-        for i in xrange(7): # only do first 10 images for now
-            idx = cresults[k+i]
-            # pos = idx%7
-            ax = plt.subplot(gs1[i])
-            # plt.subplot(10,7,i+1)
-            plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
-            plt.title(titles[idx], size=12)
-            plt.xticks([])
-            # plt.xlabel()
-            plt.yticks([])
-            ax.set_aspect('equal')
-        title = titles[k/7]
-        dir_name = './color_sim/'
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-        title = dir_name+title+'.png'
-        plt.savefig(title, bbox_inches='tight')
-        # plt.savefig('firstseries.png', bbox_inches='tight')
-        # plt.show()
-        plt.clf()
 
 if __name__ == "__main__": main()
