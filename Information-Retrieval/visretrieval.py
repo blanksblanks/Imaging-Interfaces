@@ -4,9 +4,10 @@ import time
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import gridspec as gridspec
+from PIL import Image
 
 # import PIL
-# from PIL import Image
 # from numpy import linalg as la
 
 
@@ -19,6 +20,8 @@ COL_RANGE = 256
 BLK_THRESH = 40
 BINS = 8
 BIN_SIZE = int(COL_RANGE/BINS)
+IMG_H = 60
+IMG_W = 89
 
 # ============================================================
 # Helper Functions
@@ -51,7 +54,7 @@ def visualize_hist(image, hist, colors, title):
         plt.xticks([]),plt.yticks([])
     dir_name = './color_hist/'
     if not os.path.exists(dir_name):
-        of.makedirs(dir_name)
+        os.makedirs(dir_name)
     title = dir_name+title+'.png'
     plt.savefig(title, bbox_inches='tight')
     plt.clf()
@@ -60,6 +63,36 @@ def visualize_hist(image, hist, colors, title):
     # clear image
 
     # print '3d histogram:\n', hist
+
+def pic_stitch(series, images, titles):
+    n = len(series)
+    # for k in xrange(0, n, 7):
+    #     title = titles[k]
+    #     for i in xrange(1, 7):
+    #         idx = series[i]
+    #         if i == 1:
+    #             prior = series[i-1]
+    #             img = np.concatenate((images[prior], images[idx]), axis=1)
+    #         else:
+    #             img = np.concatenate((img, images[idx]))
+    #     dir_name = './color_matches/'
+    #     if not os.path.exists(dir_name):
+    #         os.makedirs(dir_name)
+    #     cv2.imwrite(dir_name+title+'.png', img)
+
+
+    im = Image.new('RGB',(IMG_W*7,IMG_H))
+    for i in xrange(n):
+        title = titles[i]
+        idx = series[i]
+        img = images[i] # Image.open('./images/'+title+'.ppm')
+        im.paste(img, (i*IMG_W,0))
+    dir_name = './color_matches/'
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    im.save(dir_name+title+'.jpg','JPEG')
+
+
 
 
 # ============================================================
@@ -88,7 +121,7 @@ def color_histogram(image, title):
                 hist[r_bin][g_bin][b_bin] += 1
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
-    visualize_hist(image, hist, colors, title)
+    # visualize_hist(image, hist, colors, title)
     return hist
 
 def l1_color_norm(h1, h2):
@@ -150,7 +183,6 @@ def color_matches(k, chist_dis):
     # print "indices", indices
     return indices, bestdiff, worstdiff
 
-
 # ============================================================
 # Main Method
 # ============================================================
@@ -202,12 +234,32 @@ def main():
     print "Gross color matching results:", cresults
     print "Most like, most unlike:", like, unlike
 
-    for i in xrange(7*10): # only do first 10 images for now
-        index = cresults[i]
-        plt.subplot(10,7,i+1),plt.imshow(cv2.cvtColor(images[index], cv2.COLOR_BGR2RGB)) # row, col
-        plt.title(titles[index], size=12)
-        plt.xticks([]),plt.yticks([])
-    plt.savefig('foo.png', bbox_inches='tight')
-    plt.show()
+    # for i in xrange(NUM_IM):
+    #     pic_stitch(cresults[i], images, titles)
+
+    plt.rcParams['font.family']='Aller Light'
+    gs1 = gridspec.GridSpec(1,7)
+    gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
+    for k in xrange(0, NUM_IM*7, 7):
+        for i in xrange(7): # only do first 10 images for now
+            idx = cresults[k+i]
+            # pos = idx%7
+            ax = plt.subplot(gs1[i])
+            # plt.subplot(10,7,i+1)
+            plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
+            plt.title(titles[idx], size=12)
+            plt.xticks([])
+            # plt.xlabel()
+            plt.yticks([])
+            ax.set_aspect('equal')
+        title = titles[k/7]
+        dir_name = './color_sim/'
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+        title = dir_name+title+'.png'
+        plt.savefig(title, bbox_inches='tight')
+        # plt.savefig('firstseries.png', bbox_inches='tight')
+        # plt.show()
+        plt.clf()
 
 if __name__ == "__main__": main()
