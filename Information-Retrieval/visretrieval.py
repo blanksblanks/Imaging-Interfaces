@@ -95,7 +95,7 @@ def pic_stitch(series, images, titles):
         os.makedirs(dir_name)
     im.save(dir_name+title+'.jpg','JPEG')
 
-def septuple_stitch(images, titles, dir_name, cresults):
+def septuple_stitch(images, titles, dir_name, cresults, cdistances):
     plt.rcParams['font.family']='Aller Light'
     gs1 = gridspec.GridSpec(1,7)
     gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
@@ -106,9 +106,15 @@ def septuple_stitch(images, titles, dir_name, cresults):
             ax = plt.subplot(gs1[i])
             # plt.subplot(10,7,i+1)
             plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
+            sim = 1 - round(cdistances[k+i],3)
             plt.title(titles[idx], size=12)
+
+            # plt.title(titles[idx], size=12)
             plt.xticks([])
-            # plt.xlabel()
+            if i == 0:
+                plt.xlabel('similarity:')
+            else:
+                plt.xlabel(sim)
             plt.yticks([])
             ax.set_aspect('equal')
         title = titles[k/7]
@@ -184,10 +190,6 @@ def color_matches(k, chist_dis):
     results = {}
     indices = []
     distances = []
-    cbest = []
-    cbestd = []
-    cworst = []
-    cworstd = []
     bestdiff = 0
     worstdiff = 0
 
@@ -200,24 +202,32 @@ def color_matches(k, chist_dis):
     # -- first value will be the original image with diff of 0
     results = sorted([(v, k) for (k, v) in results.items()])
     # print 'results for image', k, results
+    seven = results[:4]
+    seven.extend(results[-3:])
+    # print 'last seven for image', k, seven
 
-    for i in xrange(0,4):
-        b = (results[i])
-        cbest.append(b[1])
-        cbestd.append(b[0])
-        bestdiff += b[0]
-        if i > 0:
-            w = (results[-i])
-            cworst.append(w[1])
-            cworstd.append(w[0])
-            worstdiff += w[0]
+    distances, indices = zip(*seven)
+    # print 'distances:',distances
+    # print 'indices:',indices
+    bestdiff = reduce(lambda x, y: x+y, distances[:4])
+    worstdiff = reduce(lambda x, y: x+y, distances[-3:])
+
+    # for i in xrange(0,4):
+    #     b = (results[i])
+    #     cbest.append(b[1])
+    #     cbestd.append(b[0])
+    #     bestdiff += b[0]
+    #     if i > 0:
+    #         w = (results[-i])
+    #         cworst.append(w[1])
+    #         worstdiff += w[0]
 
     # List of indices for original, 3 most, and 3 least similar image(s)
-    indices.extend(cbest)
-    indices.extend(cworst)
+    # indices.extend(cbest)
+    # indices.extend(cworst)
     # print "cbest, cworst", cbest, cworst
     # print "indices", indices
-    return indices, bestdiff, worstdiff
+    return indices, distances, bestdiff, worstdiff
 
 # ============================================================
 # Main Method
@@ -235,13 +245,15 @@ def main():
     titles = []
     chists = []
     cresults = []
+    cdistances = []
     like = 1
     unlike = 0
 
     # load image sequence
     if os.path.exists(path):
         imfilelist=[os.path.join(path,f) for f in os.listdir(path) if f.endswith(format)]
-        if len(imfilelist) < 1:
+        if len(im
+            filelist) < 1:
         	sys.exit ("Need to specify a path containing .ppm files")
         NUM_IM = len(imfilelist)
         for el in imfilelist:
@@ -260,8 +272,9 @@ def main():
 
     # determine 4 closest and 4 farthest matches for all images
     for k in xrange(NUM_IM):
-        results, bestdiff, worstdiff = color_matches(k, chist_dis)
+        results, distances, bestdiff, worstdiff = color_matches(k, chist_dis)
         cresults.extend(results)
+        cdistances.extend(distances)
         if bestdiff < like:
             like = k
         if worstdiff > unlike:
@@ -272,7 +285,8 @@ def main():
 
     # for i in xrange(NUM_IM):
     #     pic_stitch(cresults[i], images, titles)
-    septuple_stitch(images, titles, './color_sim/', cresults)
+    septuple_stitch(images, titles, './color_sim/', cresults, cdistances)
+    # septuple_stitch(chists, titles, './color_hist_sim/', cresults, cdistances)
 
 
 if __name__ == "__main__": main()
