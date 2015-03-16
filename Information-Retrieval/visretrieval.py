@@ -43,6 +43,7 @@ def display_all(images, titles):
 
 def visualize_hist(image, hist, colors, title):
     colors = sorted(colors, key=lambda c: -hist[(c[0])][(c[1])][(c[2])])
+    plt.figure(figsize=(6.85, 5.18), dpi=100)
     for idx, c in enumerate(colors):
         r = c[0]
         g = c[1]
@@ -56,10 +57,11 @@ def visualize_hist(image, hist, colors, title):
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
     title = dir_name+title+'.png'
-    plt.savefig(title, bbox_inches='tight')
+    plt.savefig(title, bbox_inches='tight', dpi=100)
     plt.clf()
-    plot = cv2.imread(title, cv2.IMREAD_UNCHANGED)
-    show(plot, 100)
+    print title
+    # plot = cv2.imread(title, cv2.IMREAD_UNCHANGED)
+    # show(plot, 100)
     # clear image
 
     # print '3d histogram:\n', hist
@@ -144,7 +146,7 @@ def color_histogram(image, title):
                 hist[r_bin][g_bin][b_bin] += 1
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
-    # visualize_hist(image, hist, colors, title)
+    visualize_hist(image, hist, colors, title)
     return hist
 
 def l1_color_norm(h1, h2):
