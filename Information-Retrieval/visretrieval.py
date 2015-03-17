@@ -5,7 +5,8 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import gridspec as gridspec
-from PIL import Image
+from scipy.misc import comb
+# from PIL import Image
 # from numpy import linalg as la
 
 
@@ -288,7 +289,7 @@ def combine_similarities(chist_dis, thist_dis):
     similarities = {}
     distances = {}
     closest = 1
-    r = 0.5
+    r = 0.2
     for i in xrange(NUM_IM):
         for j in xrange(i+1, NUM_IM):
             if (i,j) not in similarities:
@@ -366,6 +367,53 @@ def loadCSV(filename):
         for j in xrange(4):
             results.append(int(data[j])-1)
     return results
+
+def cluster_id(list_of_tups, key):
+    '''
+    Take list of cluster tups and return list of cluster id's
+    where each list index is the image and the el is its set id
+    key -- 1 if its starting index needs to be decremented to 0
+    '''
+    cluster_ids = [0] * 40
+    for i in xrange(7):
+        tup = list_of_tups[i]
+        for j in tup:
+            if key is 1:
+                cluster_ids[j-1] = i
+            else:
+                cluster_ids[j] = i
+    return cluster_ids
+
+def cluster_eval(system, human):
+    # Change list of tuples -> list of lists
+    hum = cluster_id(human, 1)
+    syst = cluster_id(system, 0)
+
+    # Initialize True-Pos, True-Neg False-Pos, False-Neg measures
+    tp, tn, fp, fn = 0,0,0,0
+    for i in xrange(NUM_IM):
+        for j in xrange(i+1,NUM_IM):
+            if hum[i] == hum[j] and syst[i] == syst[j]:
+                tp += 1
+            if hum[i] == hum[j] and syst[i] != syst[j]:
+                fp += 1
+            if hum[i] != hum[j] and syst[i] == syst[j]:
+                fn += 1
+            if hum[i] != hum[j] and syst[i] != syst[j]:
+                tn += 1
+    print "TP: %d, FP: %d, TN: %d, FN: %d" % (tp, fp, tn, fn)
+
+    rand_idx = (float(tp + tn) / (tp + fp + fn + tn))
+    precision = float(tp) / (tp + fp)
+    recall = float(tp) / (tp + fn)
+
+    # Print results:
+    print "Rand index: %f" % rand_idx
+    print "Precision : %f" % precision
+    print "Recall    : %f" % recall
+    print "F1        : %f" % ((2.0 * precision * recall) / (precision + recall))
+
+    return rand_idx
 
 # ============================================================
 # Helper and Display Functions
@@ -604,11 +652,11 @@ def main():
 
     complete = cluster(distances,0)
     single = cluster(distances,1)
-    # cluster_stitch_h(images, titles, complete, 0, './part3/')
-    # cluster_stitch_h(images, titles, single, 1, './part3/')
+    cluster_stitch_h(images, titles, complete, 0, './part3/')
+    cluster_stitch_h(images, titles, single, 1, './part3/')
 
     # sing = [(17, 34), (25,), (13, 38, 1, 11), (26,), (30,), (31,), (19, 37, 18, 23, 35, 36, 2, 0, 9, 3, 7, 15, 39, 6, 8, 10, 27, 24, 32, 16, 21, 20, 33, 29, 28, 22, 5, 4, 14, 12)]
-    # comp = [(5, 4, 14, 13, 38, 1, 11), (25, 27, 24, 32), (6, 8, 10, 30, 12, 15), (17, 34, 19, 36, 35, 29, 28, 31, 21, 20, 33), (2, 3, 7, 0, 9), (39, 16, 22, 37, 18, 23), (26,)]
+    comp = [(5, 4, 14, 13, 38, 1, 11), (25, 27, 24, 32), (6, 8, 10, 30, 12, 15), (17, 34, 19, 36, 35, 29, 28, 31, 21, 20, 33), (2, 3, 7, 0, 9), (39, 16, 22, 37, 18, 23), (26,)]
     # cluster_stitch_h(images, titles, comp, 0, './part3/')
     # cluster_stitch_h(images, titles, sing, 1, './part3/')
 
@@ -616,19 +664,12 @@ def main():
     # Part 4: creative step
     # ==================================
 
-    robert = []
-    jacky = []
-    alex = []
-    ashley = []
-    clusters = []
-
-
-    # Part 4: creative step
     robert = loadCSV('./part4/Robert.csv')
     jacky = loadCSV('./part4/Jacky.csv')
     alex = loadCSV('./part4/Alex.csv')
     ashley = loadCSV('./part4/Ashley.csv')
 
+    # clusters (TODO: load the CSV file)
     jacky_c = \
     [(2,17,23), \
     (25,33,26,28), \
@@ -662,9 +703,28 @@ def main():
     (27,32,31),
     (37,19,22,36,29,24,38,30)]
 
-    print 'Robert', robert, robert_c
-    print 'Jacky', jacky, jacky_c
-    print 'Alex', alex, alex_c
-    print 'Ashley', ashley, ashley_c
+    # print 'Robert', robert, robert_c
+    # print 'Jacky', jacky, jacky_c
+    # print 'Alex', alex, alex_c
+    # print 'Ashley', ashley, ashley_c
+
+    print 'Robert:'
+    cluster_eval(complete, robert_c)
+    print 'Jacky:'
+    cluster_eval(complete, jacky_c)
+    print 'Alex:'
+    cluster_eval(complete, alex_c)
+    print 'Ashley:'
+    cluster_eval(complete, ashley_c)
+
+    print 'Using comp...'
+    print 'Robert:'
+    cluster_eval(comp, robert_c)
+    print 'Jacky:'
+    cluster_eval(comp, jacky_c)
+    print 'Alex:'
+    cluster_eval(comp, alex_c)
+    print 'Ashley:'
+    cluster_eval(comp, ashley_c)
 
 if __name__ == "__main__": main()
