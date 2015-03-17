@@ -271,7 +271,7 @@ def combine_similarities(chist_dis, thist_dis):
     similarities = {}
     distances = {}
     closest = 1
-    r = 0.2 # because color > texture
+    r = 0.8
     for i in xrange(NUM_IM):
         for j in xrange(i+1, NUM_IM):
             if (i,j) not in similarities:
@@ -286,22 +286,23 @@ def combine_similarities(chist_dis, thist_dis):
                 #     closest = (i,j)
     return similarities, distances#, closest
 
-def cluster(images, distances):
+def cluster(distances, link):
     clusters = {}
     for idx in xrange(0,NUM_IM):
         clusters[(idx,)] = (idx,)
-    print clusters
-    counter = 0
+    # print clusters
+    # counter = 0
     while len(clusters) > NUM_CLUSTERS:
         nearest_pair = (None, None)
         nearest_dist = 1.0
-        counter += 1
+        # counter += 1
         for a in clusters:
             for b in clusters:
                 if a is not b:
-                    # Between multi-element clusters, nearness is the farthest
-                    # distance between any two of their elements
-                    dist = 0.0
+                    if link is 0:
+                        dist = link
+                    elif link is 1:
+                        dist = 1000
                     for i in clusters[a]:
                         for j in clusters[b]:
                             if i < j:
@@ -311,9 +312,12 @@ def cluster(images, distances):
                             else:
                                 continue
                             curr_dist = distances[k]
-                            if curr_dist > dist:
+                            if (link is 0 and curr_dist > dist) or (link is 1 and curr_dist < dist):
                                 dist = curr_dist
                     # Find out if that distance is the nearest pair so far
+                    # 0 is COMPLETE LINK, 1 is SINGLE
+                    # Complete nearness: farthest distance between any two elements in two clusters
+                    # Single nearness: the nearest distance between any two elemeents in two clusters
                     if dist < nearest_dist:
                         nearest_dist = dist
                         nearest_pair = (a,b)
@@ -322,45 +326,9 @@ def cluster(images, distances):
         clusters.pop(nearest_pair[1])
         new_key = nearest_pair[0] + nearest_pair[1]
         clusters[nearest_pair_values] = nearest_pair_values
-        print counter, clusters
+        # print counter, clusters
+    # print clusters
     return clusters.keys()
-
-    # clusters = {}
-    # for idx in xrange(NUM_IM):
-    #     clusters[str(idx)] = (idx,)
-    # print clusters
-    # while len(clusters) > NUM_CLUSTERS:
-    #     nearest_pair = (None, None)
-    #     nearest_dist = 1.0
-    #     for i in xrange(NUM_IM):
-    #         for j in xrange(i+1,NUM_IM):
-    #             if i in clusters and j in clusters:
-    #                 cluster_a = clusters[i]
-    #                 cluster_b = clusters[j]
-    #                 # Between multi-element clusters, nearness is the farthest
-    #                 # distance between any two of their elements
-    #                 dist = 0.0
-    #                 for a in cluster_a:
-    #                     for b in cluster_b:
-    #                         if a < b:
-    #                             k = (a,b)
-    #                         elif a > b:
-    #                             k = (b,a)
-    #                         else:
-    #                             continue
-    #                         curr_dist = distances[k]
-    #                         if curr_dist > dist:
-    #                             dist = curr_dist
-    #                 # Find out if that distance is the nearest pair so far
-    #                 if dist < nearest_dist:
-    #                     nearest_dist = dist
-    #                     nearest_pair = (i,j)
-    #     if str(nearest_pair[1]) in clusters:
-    #         clusters.pop(str(nearest_pair[1]))
-    #     clusters[str(nearest_pair[0])] = nearest_pair[0] + nearest_pair[1]
-    # print clusters
-    # return clusters
-
 
 # ============================================================
 # Helper Functions
@@ -533,7 +501,10 @@ def main():
     # Complete and single link clustering
     # TODO: add closest?
     similarities, distances = combine_similarities(chist_dis, thist_dis)
-    complete_clusters = cluster(images, distances)
+    complete = cluster(distances,0)
+    single = cluster(distances,1)
+    print 'complete', complete
+    print 'single', single
 
 
 '''
