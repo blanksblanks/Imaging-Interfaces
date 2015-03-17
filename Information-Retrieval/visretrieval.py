@@ -6,8 +6,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import gridspec as gridspec
 from PIL import Image
-
-# import PIL
 # from numpy import linalg as la
 
 
@@ -18,14 +16,13 @@ from PIL import Image
 NUM_IM = 40
 NUM_CLUSTERS = 7
 COL_RANGE = 256
-BLK_THRESH = 40
 BINS = 8
 BIN_SIZE = int(COL_RANGE/BINS)
+BLK_THRESH = 40
 IMG_H = 60
 IMG_W = 89
 LAP_BINS = 128
 LAP_BIN_SZ = int(COL_RANGE*8)/LAP_BINS
-
 
 # ============================================================
 # Gross Color Matching
@@ -64,21 +61,37 @@ def visualize_chist(image, hist, colors, title):
     # clear image
 
 def color_histogram(image, title):
+    '''
+    Calculate the 3D color histogram of an image by counting the number
+    of RGB values in a set number of bins
+    image -- pre-loaded image using cv2.imread function
+    title -- image title
+    (optional: visualize the histogram as a bar graph)
+    '''
     colors = []
     h = len(image)
     w = len(image[0])
+    # Create a 3D array - if BINS is 8, there are 8^3 = 512 total bins
     hist = np.zeros(shape=(BINS, BINS, BINS))
+    # Traverse each pixel in the image matrix and increment the appropriate
+    # hist[r_bin][g_bin][b_bin] - we know which one by floor dividing the
+    # original RGB values / BIN_SIZE
     for i in xrange(h):
         for j in xrange(w):
             pixel = image[i][j]
-            if pixel[0] > BLK_THRESH and pixel[1] > BLK_THRESH and pixel[2] > BLK_THRESH:
-                r_bin = pixel[2] / BIN_SIZE # OpenCV loads as BGR
+            # If the pixel is below black threshold, do not count it
+            if pixel[0] > BLK_THRESH and pixel[1] > BLK_THRESH \
+            and pixel[2] > BLK_THRESH:
+                # Note: pixel[i] is descending since OpenCV loads BGR
+                r_bin = pixel[2] / BIN_SIZE
                 g_bin = pixel[1] / BIN_SIZE
                 b_bin = pixel[0] / BIN_SIZE
                 hist[r_bin][g_bin][b_bin] += 1
+                # Generate list of color keys for visualization
                 if (r_bin,g_bin,b_bin) not in colors:
                     colors.append( (r_bin,g_bin,b_bin) )
     # plot = visualize_chist(image, hist, colors, title)
+    # return plot, hist
     return hist
 
 def l1_color_norm(h1, h2):
@@ -133,18 +146,21 @@ def color_matches(k, chist_dis):
 
 def find_four(chist_dis):
     results = {}
+    # ensure that a<b, b<c and c<d as order does not matter
     for a in xrange(NUM_IM):
-        for b in xrange(NUM_IM): #TODO: change to (a,NUM_IM)
-            for c in xrange(NUM_IM):
-                for d in xrange(NUM_IM):
-                    if (a<b and b<c and c<d):
-                        results[(a,b,c,d)] = chist_dis[(a,b)] + chist_dis[(a,c)] + chist_dis[(a,d)] + chist_dis[(b,c)] + chist_dis[(b,d)] + chist_dis[(c,d)]
+        for b in xrange(a+1,NUM_IM):
+            for c in xrange(b+1,NUM_IM):
+                for d in xrange(c+1,NUM_IM):
+                    results[(a,b,c,d)] = \
+                    chist_dis[(a,b)] + chist_dis[(a,c)] + \
+                    chist_dis[(a,d)] + chist_dis[(b,c)] + \
+                    chist_dis[(b,d)] + chist_dis[(c,d)]
     results = sorted([(v, k) for (k, v) in results.items()])
     best = results[0]
     worst = results[-1]
     indices = list(best[1])
     indices.extend(list(worst[1]))
-    # print "results: ", len(results), results
+    # print "results: ", len(results), #results
     # print "best, worst", best, worst
     return indices
 
@@ -227,7 +243,8 @@ def texture_histogram(lap, gray, title):
                         bins.append(bin)
     # plot = visualize_thist(gray, hist, bins, title)
     # print 'hist', hist
-    return hist#, plot
+    # return hist, plot
+    return hist
 
 def l1_texture_norm(h1, h2):
     diff = 0
@@ -271,7 +288,7 @@ def combine_similarities(chist_dis, thist_dis):
     similarities = {}
     distances = {}
     closest = 1
-    r = 0.2
+    r = 0.5
     for i in xrange(NUM_IM):
         for j in xrange(i+1, NUM_IM):
             if (i,j) not in similarities:
@@ -304,8 +321,8 @@ def cluster(distances, link):
                 if a is not b:
                     dist = link
                     # For each element in both clusters, determine "nearness"
-                    # Complete nearness: farthest distance between any two elements in two clusters
-                    # Single nearness: the nearest distance between any two elemeents in two clusters
+                    # Complete nearness: farthest distance bt any 2 el in 2 clusters 
+                    # Single nearness: nearest distance bt any 2 el in 2 clusters
                     for i in clusters[a]:
                         for j in clusters[b]:
                             k = (i,j)
@@ -317,7 +334,7 @@ def cluster(distances, link):
                                 dist = curr_dist
                     # Find out if this is the nearest pair so far in the iteration
                     if dist < nearest_dist:
-                        print counter, ': Replace distance with ', (a,b), nearest_dist, '->', dist
+                        # print counter, ': Replace distance with ', (a,b), nearest_dist, '->', dist
                         nearest_dist = dist
                         nearest_pair = (a,b)
                         nearest_pair_values = clusters[a]+clusters[b] # add elements in a tuple
@@ -327,14 +344,31 @@ def cluster(distances, link):
         # new_pair = nearest_pair[0] + nearest_pair[1]
         clusters[nearest_pair_values] = nearest_pair_values
         # clusters[new_pair] = clusters[new_pair]
-        print counter, clusters.keys()
+        # print counter, clusters.keys()
 
     # print clusters
     clusters = clusters.keys()
     return clusters
 
 # ============================================================
-# Helper Functions
+# Performance Measure
+# ============================================================
+
+def loadCSV(filename):
+    results = []
+    infile = open(filename, 'rU')
+    for idx in xrange(NUM_IM):
+        results.append(idx)
+        data = infile.readline().strip().replace(' ', '').split(',')
+        # append img idx to results list, then append friend results
+        # for best color, worst color, best texture, worst texture
+        # results.extend(data)
+        for j in xrange(4):
+            results.append(int(data[j])-1)
+    return results
+
+# ============================================================
+# Helper and Display Functions
 # ============================================================
 
 def save(image, name):
@@ -345,11 +379,14 @@ def show(image, wait):
     cv2.imshow('Image', image)
 
 def display_all(images, titles):
+    plt.rcParams['font.family']='Aller Light'
     for i in xrange(NUM_IM):
         plt.subplot(5,8,i+1),plt.imshow(cv2.cvtColor(images[i], cv2.COLOR_BGR2RGB)) # row, col
         plt.title(titles[i], size=12)
         plt.xticks([]),plt.yticks([])
-    plt.show()
+    title = './all_im.png'
+    plt.savefig(title, bbox_inches='tight')
+    print title
 
 def pair_stitch_v(images1, images2, titles):
     # note: must be same width
@@ -359,7 +396,7 @@ def pair_stitch_v(images1, images2, titles):
         path = './'+titles[i]+'.png'
         cv2.imwrite(path, img)
 
-def septuple_stitch_h(images, titles, dir_name, cresults, cdistances):
+def septuple_stitch_h(images, titles, dir_name, cresults, cdistances, cvt):
     plt.rcParams['font.family']='Aller Light'
     gs1 = gridspec.GridSpec(1,7)
     gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
@@ -368,7 +405,12 @@ def septuple_stitch_h(images, titles, dir_name, cresults, cdistances):
             idx = cresults[k+i]
             ax = plt.subplot(gs1[i])
             plt.axis('on')
-            plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
+            if cvt is 0:
+                plt.imshow(images[idx], cmap="Greys_r")
+            elif cvt is -1:
+                plt.imshow(images[idx], cmap="binary")
+            else:
+                plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
             plt.xticks([]),plt.yticks([])
             if cdistances:
                 if i == 0:
@@ -388,7 +430,7 @@ def septuple_stitch_h(images, titles, dir_name, cresults, cdistances):
         plt.clf()
         plt.close('all')
 
-def four_stitch_h(images, titles, cresults):
+def four_stitch_h(images, titles, cresults, dir_name):
     plt.rcParams['font.family']='Aller Light'
     gs1 = gridspec.GridSpec(1,4)
     gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
@@ -402,10 +444,12 @@ def four_stitch_h(images, titles, cresults):
             plt.title(titles[idx], size=12)
             ax.set_aspect('equal')
         if k is 0:
-            title = './combined_best_match.png'
+            title = 'best_match.png'
         else:
-            title = './combined_worst_match.png'
-        plt.savefig(title, bbox_inches='tight')
+            title = 'worst_match.png'
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+        plt.savefig(dir_name+title, bbox_inches='tight')
         print title
         plt.clf()
         plt.close('all')
@@ -416,7 +460,6 @@ def cluster_stitch_h(images, titles, clusters, link, dir_name):
     for cluster in clusters:
         if len(cluster) > n:
             n = len(cluster)
-
     plt.rcParams['font.family']='Aller Light'
     gs1 = gridspec.GridSpec(7,n)
     gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
@@ -455,7 +498,11 @@ def main():
     format = ".ppm"
     path = "./" + sys.argv[1]
 
-    # Part 1: gross color matching
+    # ==================================
+    # Parts 1 and 2: gross color and texture matching
+    # ==================================
+
+    # 1: color
     images = []
     titles = []
     chists = []
@@ -463,17 +510,13 @@ def main():
     cresults = []
     cdistances = []
 
-    # Part 2: gross texture matching
+    # 2: texture
     gray_images = []
     lap_images = []
     thists = []
     thist_images = []
     tresults = []
     tdistances = []
-
-    # Part 3: combine similarities and cluters
-    similarities = []
-    distances = []
 
     # Process images from user-provided directory
     if os.path.exists(path):
@@ -495,7 +538,9 @@ def main():
             # Generate texture histogram
             gray = grayscale(image, title)
             lap = laplacian(gray, title)
+            # thist = texture_histogram(lap, gray, title)
             thist = texture_histogram(lap, gray, title)
+            # thist,plot = texture_histogram(lap, gray, title)
             gray_images.append(gray)
             lap_images.append(lap)
             thists.append(thist)
@@ -519,146 +564,107 @@ def main():
         tdistances.extend(dis)
 
     # Find set of 4 most different and 4 most similar images
-    # By color
     cfour = find_four(chist_dis)
-    # four_stitch_h(images, titles, cfour) # TODO: specify dir_name
-    # By texture
     tfour = find_four(thist_dis)
-    # four_stitch_h(images, titles, tfour)
 
-    # septuple_stitch_h(images, titles, './texture_sim/', tresults, tdistances)
+    # ==================================
+    # Note: Commented out image saving and display
+    # ==================================
+
+    # Display all images
+    # display_all(images,titles)
+
+    # Display septuples
+    # septuple_stitch_h(images, titles, './part1/color_sim/', cresults, cdistances, 1)
+    # septuple_stitch_h(chist_images, titles, './part1/color_hist_sim_untitled/', cresults, None, 1)
     # for i in xrange(NUM_IM):
     #     pic_stitch(cresults[i], images, titles)
-    # septuple_stitch_h(images, titles, './color_sim/', cresults, cdistances)
-    # septuple_stitch_h(chist_images, titles, './color_hist_sim_untitled/', cresults, None)
-    # pair_stitch_v(images, chist_images, titles, './color_sims')
+    # septuple_stitch_h(images, titles, './part2/tpics/', tresults, tdistances, 1)
+    # septuple_stitch_h(thist_images, titles, './part2/thistograms/', tresults, None, 0)
+    # septuple_stitch_h(gray_images, titles, './part2/gray_images/', tresults, None, 0)
+    # septuple_stitch_h(lap_images, titles, './part2/lap_images/', tresults, None, -1)
 
-    # Complete and single link clustering
-    similarities, distances = combine_similarities(chist_dis, thist_dis)
+    # Display four best and four worst, by color and by texture
+    # four_stitch_h(images, titles, cfour, './part1/')
+    # four_stitch_h(images, titles, tfour, './part2/')
+
+    # ==================================
+    # Part 3: combine similarities and cluster
+    # ==================================
+
+    similarities = []
+    distances = []
+    complete = []
+    single = []
 
     # Testing combined similarities
+    similarities, distances = combine_similarities(chist_dis, thist_dis)
     combo_four = find_four(distances)
-    four_stitch_h(images, titles, combo_four)
+    # four_stitch_h(images, titles, combo_four, './part3/')
 
-    # print 'COMPLETE'
     complete = cluster(distances,0)
-    # print 'SINGLE'
     single = cluster(distances,1)
-    print 'complete', complete
-    print 'single', single
-    cluster_stitch_h(images, titles, complete, 0, './part3/')
-    cluster_stitch_h(images, titles, single, 1, './part3/')
+    # cluster_stitch_h(images, titles, complete, 0, './part3/')
+    # cluster_stitch_h(images, titles, single, 1, './part3/')
+
+    # sing = [(17, 34), (25,), (13, 38, 1, 11), (26,), (30,), (31,), (19, 37, 18, 23, 35, 36, 2, 0, 9, 3, 7, 15, 39, 6, 8, 10, 27, 24, 32, 16, 21, 20, 33, 29, 28, 22, 5, 4, 14, 12)]
+    # comp = [(5, 4, 14, 13, 38, 1, 11), (25, 27, 24, 32), (6, 8, 10, 30, 12, 15), (17, 34, 19, 36, 35, 29, 28, 31, 21, 20, 33), (2, 3, 7, 0, 9), (39, 16, 22, 37, 18, 23), (26,)]
+    # cluster_stitch_h(images, titles, comp, 0, './part3/')
+    # cluster_stitch_h(images, titles, sing, 1, './part3/')
+
+    # ==================================
+    # Part 4: creative step
+    # ==================================
+
+    robert = []
+    jacky = []
+    alex = []
+    ashley = []
+    clusters = []
 
 
-'''
-    if len(sys.argv) < 2:
-        sys.exit("Need to specify a path from which to read images")
+    # Part 4: creative step
+    robert = loadCSV('./part4/Robert.csv')
+    jacky = loadCSV('./part4/Jacky.csv')
+    alex = loadCSV('./part4/Alex.csv')
+    ashley = loadCSV('./part4/Ashley.csv')
 
-    format = ".ppm"
-    path = "./" + sys.argv[1]
+    jacky_c = \
+    [(2,17,23), \
+    (25,33,26,28), \
+    (18,19,20,21,22), \
+    (31,32,27), \
+    (13,30,29,34), \
+    (1,3,4,8,10,24,36,37,38,16), \
+    (5,6,7,9,11,12,14,15,35,39,40)]
+    robert_c = \
+    [(37,38,19,24), \
+    (2,13,11,10,16,7,5,6,15,9,14,12), \
+    (3,1,8,4), \
+    (27,31,32,), \
+    (29,34,17,30,36,39), \
+    (35,33,40,20,23), \
+    (25,26,28,18)]
+    alex_c = \
+    [(8,1,4,3,24,10,37,38,16,19),
+    (2,39,21,22),
+    (13,12,14),
+    (11,7,6,9),
+    (15,20,23,33,5,6),
+    (40,25,17,34,35,18,26,28),
+    (31,32,29,27,30)]
+    ashley_c = \
+    [(1,3,4,8,10,16),
+    (11,15,5,6,23,40,20,33,7),
+    (34,2),
+    (28,18,21,39,26,17,35,25),
+    (12,9,13,14),
+    (27,32,31),
+    (37,19,22,36,29,24,38,30)]
 
-    images = []
-    gray_images = []
-    lap_images = []
-    titles = []
-    thists = []
-    thist_images = []
-    tresults = []
-    tdistances = []
+    print 'Robert', robert, robert_c
+    print 'Jacky', jacky, jacky_c
+    print 'Alex', alex, alex_c
+    print 'Ashley', ashley, ashley_c
 
-    # load image sequence
-    if os.path.exists(path):
-        imfilelist=[os.path.join(path,f) for f in os.listdir(path) if f.endswith(format)]
-        if len(imfilelist) < 1:
-            sys.exit ("Need to specify a path containing .ppm files")
-        NUM_IM = len(imfilelist)
-        for el in imfilelist:
-            print(el)
-            image = cv2.imread(el, cv2.IMREAD_UNCHANGED)
-            title = el[9:-4]
-            gray = grayscale(image)
-            cv2.imwrite('./gray/'+title+'.png', gray)
-            lap = laplacian(gray)
-            cv2.imwrite('./laplacian/'+title+'.png', lap)
-            thist = texture_histogram(lap, gray, title)
-            titles.append(title)
-            image = cv2.imread(el, cv2.IMREAD_UNCHANGED)
-            images.append(image)
-            gray_images.append(gray)
-            lap_images.append(lap)
-            thists.append(thist)
-            # chist_images.append(plot)
-    else:
-        sys.exit("The path name does not exist")
-
-    # calculate lookup table for distances between image color histograms
-    thist_dis = calc_tdistance(thists)
-
-    # determine 4 closest and 4 farthest matches for all images
-    for k in xrange(NUM_IM):
-        results, distances = texture_matches(k, thist_dis)
-        tresults.extend(results)
-        tdistances.extend(distances)
-
-    # print "Gross color matching results:", cresults
-    tfour = find_four(thist_dis)
-    # cfour = [0,9,37,15,2,30,5,14]
-    four_stitch_h(images, titles, tfour)
-
-    septuple_stitch_h(images, titles, './texture_sim/', tresults, tdistances)
-
-'''
-
-'''    if len(sys.argv) < 2:
-        sys.exit("Need to specify a path from which to read images")
-
-    format = ".ppm"
-    path = "./" + sys.argv[1]
-
-    images = []
-    titles = []
-    chists = []
-    chist_images = []
-    cresults = []
-    cdistances = []
-
-    # load image sequence
-    if os.path.exists(path):
-        imfilelist=[os.path.join(path,f) for f in os.listdir(path) if f.endswith(format)]
-        if len(imfilelist) < 1:
-        	sys.exit ("Need to specify a path containing .ppm files")
-        NUM_IM = len(imfilelist)
-        for el in imfilelist:
-            print(el)
-            image = cv2.imread(el, cv2.IMREAD_UNCHANGED)
-            title = el[9:-4]
-            chist = color_histogram(image, title)
-            titles.append(title)
-            images.append(image)
-            chists.append(chist)
-            # chist_images.append(plot)
-    else:
-        sys.exit("The path name does not exist")
-
-    # calculate lookup table for distances between image color histograms
-    chist_dis = calc_cdistance(chists)
-
-    # determine 4 closest and 4 farthest matches for all images
-    for k in xrange(NUM_IM):
-        results, distances = color_matches(k, chist_dis)
-        cresults.extend(results)
-        cdistances.extend(distances)
-
-    # print "Gross color matching results:", cresults
-    cfour = find_four(chist_dis)
-    # cfour = [0,9,37,15,2,30,5,14]
-    four_stitch_h(images, titles, cfour)
-
-    # for i in xrange(NUM_IM):
-    #     pic_stitch(cresults[i], images, titles)
-    # septuple_stitch_h(images, titles, './color_sim/', cresults, cdistances)
-    # septuple_stitch_h(chist_images, titles, './color_hist_sim_untitled/', cresults, None)
-    # pair_stitch_v(images, chist_images, titles, './color_sims')
-
-'''
 if __name__ == "__main__": main()
