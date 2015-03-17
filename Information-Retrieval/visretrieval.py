@@ -758,10 +758,11 @@ def main():
     cluster_stitch_h(images, titles, complete, 0, './part3/')
     cluster_stitch_h(images, titles, single, 1, './part3/')
 
-    # sing = [(17, 34), (25,), (13, 38, 1, 11), (26,), (30,), (31,), (19, 37, 18, 23, 35, 36, 2, 0, 9, 3, 7, 15, 39, 6, 8, 10, 27, 24, 32, 16, 21, 20, 33, 29, 28, 22, 5, 4, 14, 12)]
-    comp = [(5, 4, 14, 13, 38, 1, 11), (25, 27, 24, 32), (6, 8, 10, 30, 12, 15), (17, 34, 19, 36, 35, 29, 28, 31, 21, 20, 33), (2, 3, 7, 0, 9), (39, 16, 22, 37, 18, 23), (26,)]
-    # cluster_stitch_h(images, titles, comp, 0, './part3/')
-    # cluster_stitch_h(images, titles, sing, 1, './part3/')
+    # Testing additional r values for combined similarity to see their effect
+    sim, dis = combine_similarities(chist_dis, thist_dis, 0.5)
+    comp = cluster(dis,0)
+    sim2, dis2 = combine_similarities(chist_dis, thist_dis, 0.8)
+    comp2 = cluster(dis2,0)
 
     # ==================================
     # Part 4: creative step
@@ -772,7 +773,8 @@ def main():
     alex = loadCSV('./part4/Alex.csv')
     ashley = loadCSV('./part4/Ashley.csv')
 
-    # clusters (TODO: load the CSV file)
+    # clusters
+    # TODO: load the CSV file instead of this manual stuff
     jacky_c = \
     [(2,17,23), \
     (25,33,26,28), \
@@ -811,27 +813,50 @@ def main():
     # print 'Alex', alex, alex_c
     # print 'Ashley', ashley, ashley_c
 
-    print 'Robert:'
+    print '\n\n========================'
+    print 'Matching Evaluation:'
+    print '========================'
+    print '\nRobert:'
     match_eval(cresults, tresults, robert)
-    cluster_eval(complete, robert_c)
-    print 'Jacky:'
+    print '\nJacky:'
     match_eval(cresults, tresults, jacky)
-    cluster_eval(complete, jacky_c)
-    print 'Alex:'
+    print '\nAlex:'
     match_eval(cresults, tresults, alex)
-    cluster_eval(complete, alex_c)
-    print 'Ashley:'
+    print '\nAshley:'
     match_eval(cresults, tresults, ashley)
+
+    print '\n\n========================'
+    print 'Clustering Evaluation:'
+    print '========================'
+
+    print '\n\nUsing r=0.2:'
+    print '\nRobert:'
+    cluster_eval(complete, robert_c)
+    print '\nJacky:'
+    cluster_eval(complete, jacky_c)
+    print '\nAlex:'
+    cluster_eval(complete, alex_c)
+    print '\nAshley:'
     cluster_eval(complete, ashley_c)
 
-    print 'Using comp...'
-    print 'Robert:'
+    print '\n\nUsing r=0.5:'
+    print '\nRobert:'
     cluster_eval(comp, robert_c)
-    print 'Jacky:'
+    print '\nJacky:'
     cluster_eval(comp, jacky_c)
-    print 'Alex:'
+    print '\nAlex:'
     cluster_eval(comp, alex_c)
-    print 'Ashley:'
+    print '\nAshley:'
     cluster_eval(comp, ashley_c)
+
+    print '\n\nUsing r=0.8:'
+    print '\nRobert:'
+    cluster_eval(comp2, robert_c)
+    print '\nJacky:'
+    cluster_eval(comp2, jacky_c)
+    print '\nAlex:'
+    cluster_eval(comp2, alex_c)
+    print '\nAshley:'
+    cluster_eval(comp2, ashley_c)
 
 if __name__ == "__main__": main()
