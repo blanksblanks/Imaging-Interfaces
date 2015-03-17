@@ -271,7 +271,7 @@ def combine_similarities(chist_dis, thist_dis):
     similarities = {}
     distances = {}
     closest = 1
-    r = 0.8
+    r = 0.2
     for i in xrange(NUM_IM):
         for j in xrange(i+1, NUM_IM):
             if (i,j) not in similarities:
@@ -286,49 +286,52 @@ def combine_similarities(chist_dis, thist_dis):
                 #     closest = (i,j)
     return similarities, distances#, closest
 
+# 0 is COMPLETE LINK, 1 is SINGLE
 def cluster(distances, link):
     clusters = {}
     for idx in xrange(0,NUM_IM):
         clusters[(idx,)] = (idx,)
     # print clusters
-    # counter = 0
+    counter = 0
     while len(clusters) > NUM_CLUSTERS:
         nearest_pair = (None, None)
-        nearest_dist = 1.0
-        # counter += 1
+        nearest_dist = 1 # total dissimilarity
+        counter += 1
+        # Go through every cluster-pair to find nearest pair
         for a in clusters:
             for b in clusters:
+                # Do not compare with same cluster
                 if a is not b:
-                    if link is 0:
-                        dist = link
-                    elif link is 1:
-                        dist = 1000
-                    for i in clusters[a]:
-                        for j in clusters[b]:
-                            if i < j:
-                                k = (i,j)
-                            elif i > j:
-                                k = (j,i)
-                            else:
-                                continue
-                            curr_dist = distances[k]
-                            if (link is 0 and curr_dist > dist) or (link is 1 and curr_dist < dist):
-                                dist = curr_dist
-                    # Find out if that distance is the nearest pair so far
-                    # 0 is COMPLETE LINK, 1 is SINGLE
+                    dist = link
+                    # For each element in both clusters, determine "nearness"
                     # Complete nearness: farthest distance between any two elements in two clusters
                     # Single nearness: the nearest distance between any two elemeents in two clusters
+                    for i in clusters[a]:
+                        for j in clusters[b]:
+                            k = (i,j)
+                            if i > j:
+                                k = (j,i) # tuples always in ascending order
+                            curr_dist = distances[k]
+                            if (link is 0 and curr_dist > dist) or (link is 1 and curr_dist < dist):
+                                # print counter, ': New distance for', clusters[a], clusters[b], dist, '->', curr_dist
+                                dist = curr_dist
+                    # Find out if this is the nearest pair so far in the iteration
                     if dist < nearest_dist:
+                        print counter, ': Replace distance with ', (a,b), nearest_dist, '->', dist
                         nearest_dist = dist
                         nearest_pair = (a,b)
-                        nearest_pair_values = clusters[a]+clusters[b]
+                        nearest_pair_values = clusters[a]+clusters[b] # add elements in a tuple
+        # combine the nearest pair of clusters and remove old clusters
         clusters.pop(nearest_pair[0])
         clusters.pop(nearest_pair[1])
-        new_key = nearest_pair[0] + nearest_pair[1]
+        # new_pair = nearest_pair[0] + nearest_pair[1]
         clusters[nearest_pair_values] = nearest_pair_values
-        # print counter, clusters
+        # clusters[new_pair] = clusters[new_pair]
+        print counter, clusters.keys()
+
     # print clusters
-    return clusters.keys()
+    clusters = clusters.keys()
+    return clusters
 
 # ============================================================
 # Helper Functions
@@ -399,13 +402,45 @@ def four_stitch_h(images, titles, cresults):
             plt.title(titles[idx], size=12)
             ax.set_aspect('equal')
         if k is 0:
-            title = './texture_best_match.png'
+            title = './combined_best_match.png'
         else:
-            title = './texture_worst_match.png'
+            title = './combined_worst_match.png'
         plt.savefig(title, bbox_inches='tight')
         print title
         plt.clf()
         plt.close('all')
+
+def cluster_stitch_h(images, titles, clusters, link, dir_name):
+    # set n to the length of the largest cluster
+    n = 1
+    for cluster in clusters:
+        if len(cluster) > n:
+            n = len(cluster)
+
+    plt.rcParams['font.family']='Aller Light'
+    gs1 = gridspec.GridSpec(7,n)
+    gs1.update(wspace=0.05, hspace=0.05) # set the spacing between axes.
+    for k in xrange(0, n*7, n):
+        cluster = clusters[(k/n)]
+        for i in xrange(len(cluster)):
+            idx = cluster[i]
+            ax = plt.subplot(gs1[i+k])
+            plt.axis('on')
+            plt.imshow(cv2.cvtColor(images[idx], cv2.COLOR_BGR2RGB)) # row, col
+            plt.xticks([]),plt.yticks([])
+            plt.title(titles[idx], size=12)
+            ax.set_aspect('equal')
+    if link is 0:
+        title = 'cluster_complete'
+    else:
+        title = 'cluster_single'
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    title = dir_name+title+'.png'
+    plt.savefig(title, bbox_inches='tight')
+    print title
+    plt.clf()
+    plt.close('all')
 
 # ============================================================
 # Where All the Magic Gets Invoked
@@ -499,12 +534,20 @@ def main():
     # pair_stitch_v(images, chist_images, titles, './color_sims')
 
     # Complete and single link clustering
-    # TODO: add closest?
     similarities, distances = combine_similarities(chist_dis, thist_dis)
+
+    # Testing combined similarities
+    combo_four = find_four(distances)
+    four_stitch_h(images, titles, combo_four)
+
+    # print 'COMPLETE'
     complete = cluster(distances,0)
+    # print 'SINGLE'
     single = cluster(distances,1)
     print 'complete', complete
     print 'single', single
+    cluster_stitch_h(images, titles, complete, 0, './part3/')
+    cluster_stitch_h(images, titles, single, 1, './part3/')
 
 
 '''
