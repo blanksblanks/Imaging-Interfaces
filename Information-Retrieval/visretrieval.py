@@ -285,11 +285,11 @@ def texture_matches(k, thist_dis):
 # Combine Similarities and Cluster
 # ============================================================
 
-def combine_similarities(chist_dis, thist_dis):
+def combine_similarities(chist_dis, thist_dis, r):
+    '''where r is the ratio'''
     similarities = {}
     distances = {}
     closest = 1
-    r = 0.2
     for i in xrange(NUM_IM):
         for j in xrange(i+1, NUM_IM):
             if (i,j) not in similarities:
@@ -367,6 +367,109 @@ def loadCSV(filename):
         for j in xrange(4):
             results.append(int(data[j])-1)
     return results
+
+def print_results(tp, fp, fn):
+    print "TP: %d, FP: %d, FN: %d" % (tp, fp, fn)
+
+    precision = float(tp) / (tp + fp)
+    recall = float(tp) / (tp + fn)
+
+    print "Precision : %f" % precision
+    print "Recall    : %f" % recall
+    print "F1        : %f" % ((2.0 * precision * recall) / (precision + recall))
+
+def match_eval(cresults, tresults, hresults):
+    '''
+    tp -- if human guess is in sys results
+    fn -- if human guess is missing from sys results
+    fp -- if human guess is in opposite of sys results
+    '''
+    # best,worst color and best,worst texture measures
+    bc_tp, bc_fp, bc_fn = 0,0,0
+    wc_tp, wc_fp, wc_fn = 0,0,0
+    bt_tp, bt_fp, bt_fn = 0,0,0
+    wt_tp, wt_fp, wt_fn = 0,0,0
+
+    counter = 0
+
+    for i in xrange(0,NUM_IM*7,7):
+
+        # range indices for best/worst system results
+        b_from = i+1
+        b_to = i+4
+        w_from = i+4
+        w_to = i+7
+
+        # human results for best color, worst color,
+        # best texture, worst texture
+        # note: need var j because human list increments by 5
+        # whereas system list increments by 7
+        j = i - (2*counter)
+        c_best = hresults[j+1]
+        c_worst = hresults[j+2]
+        t_best = hresults[j+3]
+        t_worst = hresults[j+4]
+        counter += 1
+
+        # check best color match
+        if c_best in cresults[b_from:b_to]:
+            bc_tp += 1
+        else:
+            bc_fn += 1
+        # since we are measuring computer against human perf:
+        # program messed up and made a big false positive
+        if c_best in cresults[w_from:w_to]:
+            wc_fp += 1
+            print 'Human best color match in system worst!', c_best
+
+        # check worst color match
+        if c_worst in cresults[w_from:w_to]:
+            wc_tp += 1
+        else:
+            wc_fn += 1
+        if c_worst in cresults[b_from:b_to]:
+            bc_fp += 1
+            print'Human worst color match in system best!', c_worst
+
+        # check best texture match
+        if t_best in tresults[b_from:b_to]:
+            bt_tp += 1
+        else:
+            bt_fn += 1
+        # since we are measuring computer against human perf:
+        # program messed up and made a big false positive
+        if t_best in tresults[w_from:w_to]:
+            wt_fp += 1
+            print 'Human best texture match in system worst!', t_best
+
+        # check worst texture match
+        if t_worst in tresults[w_from:w_to]:
+            wt_tp += 1
+        else:
+            wt_fn += 1
+        if t_worst in tresults[b_from:b_to]:
+            bt_fp += 1
+            print'Human worst texture match in system best!', t_worst
+
+    # Calculate total tp,fp,fn values
+    tp = bc_tp + wc_tp + bt_tp + wt_tp
+    fp = bc_fp + wc_fp + bt_fp + wt_fp
+    fn = bc_fn + wc_fn + bt_fn + wt_fn
+
+    print "1: BEST COLOR MATCH RESULTS"
+    print_results(bc_tp, bc_fp, bc_fn)
+
+    print "2: WORST COLOR MATCH RESULTS"
+    print_results(wc_tp, wc_fp, wc_fn)
+
+    print "3: BEST TEXTURE MATCH RESULTS"
+    print_results(bt_tp, bt_fp, bt_fn)
+
+    print "4: WORST TEXTURE MATCH RESULTS"
+    print_results(wt_tp, wt_fp, wt_fn)
+
+    print "5: OVERALL COLOR AND TEXTURE MATCH RESULTS"
+    print_results(tp, fp, fn)
 
 def cluster_id(list_of_tups, key):
     '''
@@ -646,7 +749,7 @@ def main():
     single = []
 
     # Testing combined similarities
-    similarities, distances = combine_similarities(chist_dis, thist_dis)
+    similarities, distances = combine_similarities(chist_dis, thist_dis, 0.2)
     combo_four = find_four(distances)
     # four_stitch_h(images, titles, combo_four, './part3/')
 
@@ -709,12 +812,16 @@ def main():
     # print 'Ashley', ashley, ashley_c
 
     print 'Robert:'
+    match_eval(cresults, tresults, robert)
     cluster_eval(complete, robert_c)
     print 'Jacky:'
+    match_eval(cresults, tresults, jacky)
     cluster_eval(complete, jacky_c)
     print 'Alex:'
+    match_eval(cresults, tresults, alex)
     cluster_eval(complete, alex_c)
     print 'Ashley:'
+    match_eval(cresults, tresults, ashley)
     cluster_eval(complete, ashley_c)
 
     print 'Using comp...'
