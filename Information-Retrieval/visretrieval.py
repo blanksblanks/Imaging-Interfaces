@@ -378,6 +378,13 @@ def print_results(tp, fp, fn):
     print "Recall    : %f" % recall
     print "F1        : %f" % ((2.0 * precision * recall) / (precision + recall))
 
+    # print tp
+    # print fp
+    # print fn
+    # print precision
+    # print recall
+    # print ((2.0 * precision * recall) / (precision + recall))
+
 def match_eval(cresults, tresults, hresults):
     '''
     tp -- if human guess is in sys results
@@ -420,7 +427,8 @@ def match_eval(cresults, tresults, hresults):
         # program messed up and made a big false positive
         if c_best in cresults[w_from:w_to]:
             wc_fp += 1
-            print 'Human best color match in system worst!', c_best
+            print 'Human best color match in system worst!', cresults[i]+1, c_best+1
+            # + 1 to make it human readable - display current index and image in q
 
         # check worst color match
         if c_worst in cresults[w_from:w_to]:
@@ -429,7 +437,7 @@ def match_eval(cresults, tresults, hresults):
             wc_fn += 1
         if c_worst in cresults[b_from:b_to]:
             bc_fp += 1
-            print'Human worst color match in system best!', c_worst
+            print'Human worst color match in system best!', cresults[i]+1, c_worst+1
 
         # check best texture match
         if t_best in tresults[b_from:b_to]:
@@ -440,7 +448,7 @@ def match_eval(cresults, tresults, hresults):
         # program messed up and made a big false positive
         if t_best in tresults[w_from:w_to]:
             wt_fp += 1
-            print 'Human best texture match in system worst!', t_best
+            print 'Human best texture match in system worst!', tresults[i]+1, t_best+1
 
         # check worst texture match
         if t_worst in tresults[w_from:w_to]:
@@ -449,7 +457,7 @@ def match_eval(cresults, tresults, hresults):
             wt_fn += 1
         if t_worst in tresults[b_from:b_to]:
             bt_fp += 1
-            print'Human worst texture match in system best!', t_worst
+            print'Human worst texture match in system best!', tresults[i]+1, t_worst+1
 
     # Calculate total tp,fp,fn values
     tp = bc_tp + wc_tp + bt_tp + wt_tp
@@ -515,6 +523,14 @@ def cluster_eval(system, human):
     print "Precision : %f" % precision
     print "Recall    : %f" % recall
     print "F1        : %f" % ((2.0 * precision * recall) / (precision + recall))
+
+    # print tp
+    # print fp
+    # print fn
+    # print rand_idx
+    # print precision
+    # print recall
+    # print ((2.0 * precision * recall) / (precision + recall))
 
     return rand_idx
 
