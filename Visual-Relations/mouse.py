@@ -5,6 +5,10 @@ drawing = False # true if mouse is pressed
 mode = True # if True, draw rectangle. Press 'm' to toggle to curve
 ix,iy = -1,-1
 
+def which_building(x,y):
+    idx = int(im[y][x][2])
+    return idx
+
 # mouse callback function
 def draw_circle(event,x,y,flags,param):
     global ix,iy,drawing,mode
@@ -12,18 +16,22 @@ def draw_circle(event,x,y,flags,param):
     if event == cv2.EVENT_LBUTTONDOWN:
         drawing = True
         ix,iy = x,y
+        idx = which_building(ix,iy)
+        print 'Mouse clicked', ix,iy, 'building', idx
 
     elif event == cv2.EVENT_MOUSEMOVE:
         if drawing == True:
             if mode == True:
-                cv2.rectangle(img,(ix,iy),(x,y),(0,255,0),-1)
+                # cv2.rectangle(img,(ix,iy),(x,y),(0,255,0),-1)
+                cv2.circle(img,(x,y),5,(0,255,0),-1)
             else:
                 cv2.circle(img,(x,y),5,(0,0,255),-1)
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
         if mode == True:
-            cv2.rectangle(img,(ix,iy),(x,y),(0,255,0),-1)
+            # cv2.rectangle(img,(ix,iy),(x,y),(0,255,0),-1)
+            cv2.circle(img,(x,y),5,(0,255,0),-1)
         else:
             cv2.circle(img,(x,y),5,(0,0,255),-1)
 
