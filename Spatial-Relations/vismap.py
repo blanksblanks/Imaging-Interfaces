@@ -89,7 +89,7 @@ def analyze_buildings():
         # Find min, max value of x, min, max value of y
         x,y,w,h = cv2.boundingRect(cnt)
         print " Bounding Rectangle: ({0},{1}), ({2},{3})".format(x,y,(x+w),(y+h))
-        roi=img[y:y+h,x:x+w]
+        roi = img[y:y+h,x:x+w]
         # cv2.imwrite(str(idx) + '.jpg', roi)
         # To draw a rectangle, you need T-L corner and B-R corner
         cv2.rectangle(img,(x,y),(x+w,y+h),(200,0,0),2)
@@ -113,7 +113,27 @@ def analyze_buildings():
         rect_area = w*h
         extent = float(area)/rect_area
         print ' Extent:', round(extent, 3)
+
+
+        # check curve for convexity defects and correct it
+        # pass in contour points, hull, !returnPoints return indices
+        hull = cv2.convexHull(cnt,returnPoints = False)
+        defects = cv2.convexityDefects(cnt,hull) # array
+        if len(hull) > 3 and len(cnt) > 3 and (defects is not None):
+            for i in range(defects.shape[0]):
+                s,e,f,d = defects[i,0]
+                start = tuple(cnt[s][0])
+                end = tuple(cnt[e][0])
+                far = tuple(cnt[f][0])
+                # print start, end, far
+                cv2.line(img,start,end,[0,255,0],1)
+                cv2.circle(img,far,3,[255,0,255],-1)
+
+        # this just draws the rect again
+        #cv2.drawContours(img, contours, 0, (0,0,255), 1)
     return buildings
+
+# def analyze_shape()
 
 # ============================================================
 # Main Invocation
