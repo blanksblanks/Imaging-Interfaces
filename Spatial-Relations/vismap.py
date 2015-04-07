@@ -53,8 +53,18 @@ def which_building(x,y):
     idx = int(im[y][x][2])
     return idx
 
+def load_names(filename):
+    names = []
+    infile = open(filename, 'rU')
+    for idx in xrange(27):
+        name = infile.readline().replace('"', '').split('=')[1].rstrip('\r\n')
+        names.append(name)
+    print names
+    return names
+
 def analyze_buildings():
     buildings = {}
+    names = load_names('ass3-table.txt')
     contours,hierarchy = cv2.findContours(imgray,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
     idx = 27
     for cnt in contours:
@@ -73,7 +83,7 @@ def analyze_buildings():
             print 'ignored the cs courtyard'
             continue
         idx = int(color[2])
-        print 'Building', idx
+        print 'Building', idx, ':', names[idx-1]
 
         # Let (x,y) be top-left coordinate and (w,h) be width and height
         # Find min, max value of x, min, max value of y
