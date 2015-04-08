@@ -203,6 +203,38 @@ def print_info(buildings):
 
 # def analyze_shape()
 
+def describe_size(buildings):
+    n = len(buildings)
+    sorted_buildings = sorted(buildings, key=lambda k:-k['area'])
+    names = [(sorted_buildings[i]['name']) for i in range(n)]
+    areas = [(sorted_buildings[i]['area']) for i in range(n)]
+    biggest = areas[0]
+    average = sum(areas)/n
+    ratios = [areas[i]/biggest for i in range(n)]
+    # diffs = [(areas[i+1]-areas[i])/(areas[i+1]+areas[i]) for i in range(n-1)]
+    # diffs.insert(0,0)
+
+    print 'biggest', biggest
+    print 'average', average
+
+    sizes = []
+    for ratio in ratios:
+        if ratio < 0.146: # cutoff Lion's Court
+            sizes.append('dimunitive')
+        elif ratio < 0.416: # cutoff Journalism & Furnald
+            sizes.append('middling')
+        elif ratio < 0.874:
+            sizes.append('large')
+        else:
+            sizes.append('colossal')
+
+    for i in xrange(n):
+        print areas[i], '\t', round(ratios[i],3), '\t', sizes[i], '\t', names[i]
+
+
+
+
+
 # ============================================================
 # Main Invocation
 # ============================================================
@@ -215,6 +247,7 @@ def main():
     names = load_names('ass3-table.txt')
     buildings = analyze_buildings(names)
     print_info(buildings)
+    describe_size(buildings)
 
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
