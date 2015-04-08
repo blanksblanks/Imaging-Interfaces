@@ -116,7 +116,7 @@ def measure_building(cnt):
     # Find min, max value of x, min, max value of y
     x,y,w,h = cv2.boundingRect(cnt)
     mbr = [(x,y),(x+w,y+h)] # mbr[0] = T-L corner, mbr[1] = B-R corner
-    print " Minimum Bounding Rectangle: ({0},{1}), ({2},{3})".format(x,y,(x+w),(y+h))
+    # print " Minimum Bounding Rectangle: ({0},{1}), ({2},{3})".format(x,y,(x+w),(y+h))
     roi = map_campus[y:y+h,x:x+w]
     # cv2.imwrite(str(idx) + '.jpg', roi)
     # To draw a rectangle, you need T-L corner and B-R corner
@@ -129,21 +129,42 @@ def measure_building(cnt):
     cx = int(M['m10']/M['m00'])
     cy = int(M['m01']/M['m00'])
     centroid = (cx, cy)
-    print ' Center of Mass:', centroid
+    # print ' Center of Mass:', centroid
     # To draw a circle, you need its center coordinates and radius
     cv2.circle(map_campus, centroid, 3, (255,255,0), -1)
 
     # Contour area is given by the function cv2.contourArea(cnt) or
     area = M['m00']
-    print ' Area:', area
+    # print ' Area:', area
     # area = cv2.contourArea(cnt)
     # x,y,w,h = cv2.boundingRect(cnt)
     rect_area = w*h
     extent = float(area)/rect_area
-    print ' Extent:', round(extent, 3)
+    # print ' Extent:', round(extent, 3)
 
     # label = str(idx) + ' : ' + str(area) + ' : ' + str(extent)
     # cv2.putText(map_campus, str(idx), (cx,cy), cv2.FONT_HERSHEY_SIMPLEX, 0.3, 255)
+    # check curve for convexity defects and correct it
+    # pass in contour points, hull, !returnPoints return indices
+    # hull = cv2.convexHull(cnt,returnPoints = False)
+    # defects = cv2.convexityDefects(cnt,hull) # array
+    # if len(hull) > 3 and len(cnt) > 3 and (defects is not None):
+    #     for i in range(defects.shape[0]):
+    #         s,e,f,d = defects[i,0]
+    #         start = tuple(cnt[s][0])
+    #         end = tuple(cnt[e][0])
+    #         far = tuple(cnt[f][0])
+    #         # print start, end, far
+    #         cv2.line(map_campus,start,end,[0,255,0],1)
+    #         cv2.circle(map_campus,far,3,[255,0,255],-1)
+
+    # this just draws the rect again
+    #cv2.drawContours(map_campus, contours, 0, (0,0,255), 1)
+
+    # find corners - this method is buggy
+    # dst = cv2.cornerHarris(imgray,3,3,0.2)
+    # dst = cv2.dilate(dst,None)
+    # map_campus[dst>0.01*dst.max()]=[0,0,255]
 
     return mbr, centroid, area, extent
 
@@ -158,42 +179,27 @@ def analyze_buildings(names):
     contours,hierarchy = cv2.findContours(map_binary,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
     for cnt in contours:
         building = {}
-
         idx = id_building(cnt)
-        if idx:
-            mbr, centroid, area, extent = measure_building(cnt)
-
-            building['number'] = idx
-            building['name'] = names[str(idx)]
-            building['mbr'] = mbr
-            building['centroid'] = centroid
-            building['area'] = area
-            building['extent'] = extent
-            # print 'Building', idx, ':', names[str(idx)]
-            # check curve for convexity defects and correct it
-            # pass in contour points, hull, !returnPoints return indices
-            # hull = cv2.convexHull(cnt,returnPoints = False)
-            # defects = cv2.convexityDefects(cnt,hull) # array
-            # if len(hull) > 3 and len(cnt) > 3 and (defects is not None):
-            #     for i in range(defects.shape[0]):
-            #         s,e,f,d = defects[i,0]
-            #         start = tuple(cnt[s][0])
-            #         end = tuple(cnt[e][0])
-            #         far = tuple(cnt[f][0])
-            #         # print start, end, far
-            #         cv2.line(map_campus,start,end,[0,255,0],1)
-            #         cv2.circle(map_campus,far,3,[255,0,255],-1)
-
-            # this just draws the rect again
-            #cv2.drawContours(map_campus, contours, 0, (0,0,255), 1)
-            buildings[(idx-1)] = building
-
-    # find corners - this method is buggy
-    # dst = cv2.cornerHarris(imgray,3,3,0.2)
-    # dst = cv2.dilate(dst,None)
-    # map_campus[dst>0.01*dst.max()]=[0,0,255]
+        if idx is None:
+            continue
+        mbr, centroid, area, extent = measure_building(cnt)
+        building['number'] = idx
+        building['name'] = names[str(idx)]
+        building['mbr'] = mbr
+        building['centroid'] = centroid
+        building['area'] = area
+        building['extent'] = extent
+        buildings[(idx-1)] = building
 
     return buildings
+
+def print_info(buildings):
+    for building in buildings:
+        print building['number'], ':', building['name']
+        print ' Minimum Bounding Rectangle:', building['mbr'][0], ',', building['mbr'][1]
+        print ' Center of Mass:', building['centroid']
+        print ' Area:', building['area']
+        print ' Extent:', building['extent']
 
 # def analyze_shape()
 
@@ -208,7 +214,7 @@ def main():
     # Analyze image
     names = load_names('ass3-table.txt')
     buildings = analyze_buildings(names)
-    print buildings
+    print_info(buildings)
 
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
