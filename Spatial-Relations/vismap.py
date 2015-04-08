@@ -15,30 +15,6 @@ map_labeled = cv2.imread('ass3-labeled.pgm', 0) # load map_labeled as grayscale
 map_campus = cv2.imread('ass3-campus.pgm', 1) # load map_campus as color
 map_binary = cv2.cvtColor(map_campus,cv2.COLOR_BGR2GRAY) # load map_campus as grayscale
 
-def print_imarray(im):
-    w = len(im[0])
-    for i in xrange(len(im)):
-        print im[i][0], im[i][1], im[i][3]
-
-def grayscale(image):
-    """Convert image into black and white with (R+G+B)/3"""
-    h = len(image)
-    w = len(image[0])
-    gray = np.zeros(shape=(h,w))
-    for row in xrange(h):
-        for col in xrange(w):
-            # compose gray image pixel by pixel
-            pixel = image[row][col]
-            rgb = int(pixel[0]) + int(pixel[1]) + int(pixel[2])
-            g = int(round((rgb / 3.0),0)) # round up
-            gray[row][col] = g
-    # gray_img = cv2.imread(gray, cv2.IMREAD_UNCHANGED)
-    cv2.imwrite('./gray.png', gray)
-    cv2.imwrite('./unchanged.png', image)
-    return gray
-
-# print gray
-
 # ============================================================
 # User Interface
 # ============================================================
@@ -92,7 +68,6 @@ def load_names(filename):
 
 def id_building(cnt):
     """Identify what building a contour represents by its pixel value"""
-
     # To get all the points which comprise an object
     # Numpy function gives coordinates in (row, col)
     # OpenCV gives coordinates in (x,y)
@@ -196,8 +171,10 @@ def analyze_buildings(names):
     max_area, min_area = analyze_areas(buildings) # add True arg to print results
     for building in buildings:
         size = describe_size(building, max_area)
-        describe_shape(building)
-        # shape = describe_shape(building)
+        description = describe_shape(building)
+        description.insert(0,size)
+        building['description'] = description
+
         # multiple = describe_multiplicity
     # analyze_extents(buildings)
     # analyze_shapes(buildings)
@@ -273,24 +250,18 @@ def describe_size(building, max_area):
         return 'miniscule'
 
 def describe_shape(building):
-    tolerance = 2
-    # map_l = cv2.imread('ass3-labeled.pgm', 0)
-    # print map_l
-    # Recall mbr = [(x,y),(x+w,y+h)]
-    # nw = building['mbr'][0]
-    # se = building['mbr'][1]
-    # ne = (se[0],nw[1]) # (x+w,y)
-    # sw = (nw[0],se[1]) # (x,y+h)
-    # # tl = (x+w,y)
-    # # br = (x,y+h)
+    """Describe shape based on corner and midpoint counts"""
 
-    # # Extract x,y,w,h coordinates
-    # x = [0] + tolerance
-    # y = nw[1] + tolerance
-    # w = se[0] - x - tolerance
-    # h = se[1] - y - tolerance
+    descriptions = []
 
     x,y,w,h = cv2.boundingRect(building['cnt'])
+
+    # Tolerance based on ratio of min(w,h) as building sizes vary
+    tolerance = min(w,h)/10
+
+    # Shift x,y,w,h so corners and midpoints are closer to center
+    # Else they may report false negative on the MBR perimeter, esp
+    # for bumpy buildings
     x += tolerance
     y += tolerance
     w -= 2*tolerance
@@ -306,41 +277,92 @@ def describe_shape(building):
     n = (x+(w/2),y)
     e = (x+w,y+(h/2))
     s = (x+(w/2),y+h)
-    w = (x,y+(h/2))
+    west = (x,y+(h/2))
 
     corners = [nw,se,ne,sw]
-    midpoints = [n,e,s,w]
+    midpoints = [n,e,s,west] # west because it overwrites width
     corners_filled = [] # nw, ne, se, sw
-    midpoints_filled = [] # n, e, s, w
+    midpoints_filled = [] # n, e, s, west
 
-    print building['name']
+    # print building['number'], building['name']
+    # print ' tolerance', tolerance
 
-    try :
-        for corner in corners:
-            # print 'Map labeled corner: ', map_labeled[corner]
-            if map_labeled[tuple(reversed(corner))] == building['number']:
-                corners_filled.append(1)
-                cv2.circle(map_campus, corner, 1, (255,255,0), -1)
-            else:
-                corners_filled.append(0)
-                cv2.circle(map_campus, corner, 1, (0,0,255), -1)
+    for corner in corners:
+        if map_labeled[tuple(reversed(corner))] == building['number']:
+            corners_filled.append(1)
+            cv2.circle(map_campus, corner, 1, (255,255,0), -1)
+        else:
+            corners_filled.append(0)
+            cv2.circle(map_campus, corner, 1, (0,0,255), -1)
 
-        for midpoint in midpoints:
-            # 'Map labeled midpoint: ', map_labeled[midpoint]
-            if map_labeled[tuple(reversed(midpoint))] == building['number']:
-                midpoints_filled.append(1)
-                cv2.circle(map_campus, midpoint, 1, (255,255,0), -1)
-            else:
-                midpoints_filled.append(0)
-                cv2.circle(map_campus, midpoint, 1, (0,0,255), -1)
-    except (IndexError):
-        print IndexError
+    for midpoint in midpoints:
+        if map_labeled[tuple(reversed(midpoint))] == building['number']:
+            midpoints_filled.append(1)
+            cv2.circle(map_campus, midpoint, 1, (0,255,0), -1)
+        else:
+            midpoints_filled.append(0)
+            cv2.circle(map_campus, midpoint, 1, (0,0,255), -1)
 
-    print 'corners', corners_filled
-    print 'midpoints', midpoints_filled
-
+    # Count the number of corners and midpoints for each building
+    # Not necessary to consider order at this point
+    corners_count = corners_filled.count(1)
+    midpoints_count = midpoints_filled.count(1)
+    # print ' Corners', corners_filled, corners_count
+    # print ' Midpoints', midpoints_filled, midpoints_count
 
 
+    # Difference between height and width should be small enough
+    # Decided not to use absolute value as differnce is relative
+    # Also check that building fills out most of the MBR
+    # Ruling out Journalism & Furnald, and Chandler & Havemeyer
+    if (abs(h-w) <= max(h,w)/5) and (building['extent'] > 0.7):
+        is_square = True
+    else:
+        is_square = False
+
+    # Used this method to check accuracy of my rectangle check
+    # if (cv2.isContourConvex(building['cnt'])):
+    #     print 'Rectangle'
+
+    # Check shape conditions:
+    # [] must have all corners and midpoints filled
+    # + should have empty corners and all midpoints
+    # I should have all corners but only 2 midpoints
+    # C should have all corners but one midpoint missing
+    # L should have 3 corners and only 2 midpoints
+    # T should have 2 corners but all midpoints
+    # Anything else is classified as 'irregular'
+    if (corners_count == 4 and midpoints_count == 4):
+        # because if it square, rectangular would be redundant
+        if (is_square):
+            descriptions.append('square')
+        else:
+            descriptions.append('rectangular')
+    elif (corners_count == 0 and midpoints_count == 4):
+        if (is_square):
+            descriptions.append('squarish')
+        descriptions.append('cross-shaped')
+    elif (corners_count == 4 and midpoints_count == 2):
+        descriptions.append('I-shaped')
+    elif (corners_count == 4 and midpoints_count == 3):
+        descriptions.append('C-shaped')
+    elif (corners_count == 3 and midpoints_count == 2):
+        descriptions.append('L-shaped')
+    elif (corners_count == 2 and midpoints_count == 4):
+        descriptions.append('T-shaped')
+    else:
+        descriptions.append('irregularly shaped')
+
+    # Check orientation conditions:
+    # If width is > 1.5 * height, "wide", E-W oriented
+    # If height is > 1.5 * width, "tall", N-S oriented
+    # Decided not to include symmetrically oriented
+    if (w > 1.5 * h):
+        descriptions.append('oriented East-West')
+    elif (h > 1.5 * w):
+        descriptions.append('oriented North-South')
+
+    return descriptions
 
 def print_info(buildings):
     for building in buildings:
@@ -348,7 +370,7 @@ def print_info(buildings):
         print ' Minimum Bounding Rectangle:', building['mbr'][0], ',', building['mbr'][1]
         print ' Center of Mass:', building['centroid']
         print ' Area:', building['area']
-        # print ' Description', building['description']
+        print ' Description', building['description']
 
 
 # ============================================================
