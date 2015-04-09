@@ -169,10 +169,14 @@ def analyze_buildings(names):
         buildings[(idx-1)] = building
 
     max_area, min_area = analyze_areas(buildings) # add True arg to print results
+    find_extrema(buildings)
+
     for building in buildings:
+        location = describe_location(building)
         size = describe_size(building, max_area)
         description = describe_shape(building)
         description.insert(0,size)
+        description.extend(location)
         building['description'] = description
 
         # multiple = describe_multiplicity
@@ -240,14 +244,14 @@ def describe_size(building, max_area):
     ratio = building['area']/max_area
     if ratio > 0.7: # cutoff at College Walk
         return 'colossal'
-    if ratio < 0.4: # cutoff at Journalism & Furnald
+    elif ratio > 0.4: # cutoff at Journalism & Furnald
         return 'large'
     elif ratio > 0.15: # cutoff at Philosophy
         return 'middling'
     elif ratio > 0.1: # cutoff Earl Hall
         return 'small'
     else:
-        return 'miniscule'
+        return 'tiny'
 
 def describe_shape(building):
     """Describe shape based on corner and midpoint counts"""
@@ -284,8 +288,6 @@ def describe_shape(building):
     corners_filled = [] # nw, ne, se, sw
     midpoints_filled = [] # n, e, s, west
 
-    # print building['number'], building['name']
-    # print ' tolerance', tolerance
 
     for corner in corners:
         if map_labeled[tuple(reversed(corner))] == building['number']:
@@ -307,9 +309,11 @@ def describe_shape(building):
     # Not necessary to consider order at this point
     corners_count = corners_filled.count(1)
     midpoints_count = midpoints_filled.count(1)
-    # print ' Corners', corners_filled, corners_count
-    # print ' Midpoints', midpoints_filled, midpoints_count
 
+    # print building['number'], building['name']
+    # print ' Tolerance', tolerance
+    # print '', corners_filled, 'Corners Count', corners_count
+    # print '', midpoints_filled, 'Midpoints Count', midpoints_count
 
     # Difference between height and width should be small enough
     # Decided not to use absolute value as differnce is relative
@@ -362,7 +366,75 @@ def describe_shape(building):
     elif (h > 1.5 * w):
         descriptions.append('oriented North-South')
 
+    # print ' Description', descriptions
     return descriptions
+
+def describe_location(building):
+    # TODO: fix to buildings[21]
+    college_walk = (137,322)
+    marker = college_walk[1]
+    map_h = len(map_binary)
+    map_w = len(map_binary[0])
+
+    h = building['mbr'][1][1] - building['mbr'][0][1]
+    w = building['mbr'][1][0] - building['mbr'][0][0]
+
+    # Reduce h/w shift so buildings are positioned properly
+    h = h * 0.7
+    w = w * 0.7
+
+    cx = building['centroid'][0]
+    cy = building['centroid'][1]
+
+    location = []
+
+    # Locate buildings on borders or central axis
+    if (cx < w) and (cy < h):
+        location.append('northwest corner')
+    elif (cx > map_w-w) and (cy < h):
+        location.append('northeast corner')
+    elif (cx > map_w-w) and (cy > map_h-h):
+        location.append('southeast corner')
+    elif (cx < w) and (cy > map_h-h):
+        location.append('southwest corner')
+    elif (cx < w):
+        location.append('western border')
+    elif (cy < h):
+        location.append('northern border')
+    elif (cx > map_w-w):
+        location.append('eastern border')
+    elif (cy > map_h-h):
+        location.append('southern border')
+
+    # For buildings not on north/south borders, locate whether on
+    # upper/central/lower campus
+    if (cy > marker) and (cy < map_h-h):
+        location.append('lower campus')
+    elif (cy < marker) and (cy > (map_h-marker)/2):
+        location.append('central campus')
+    elif (cy > h) and (cy < (map_h-marker)/2):
+        location.append('upper campus')
+
+    # For buildings not on east/west borders
+    if (cx > (map_w/2)-w) and (cx < (map_w/2)+w) and (cx > w) and (cx < map_w-w):
+        location.append('on central axis')
+
+    return location
+
+def find_extrema(buildings):
+    """Find extrema and return as list of tuple pairs of building index and extrema description"""
+    num_buildings = len(buildings)
+    extrema = []
+
+    # Find largest and smallest by MBR area
+    # We use MBR area instea of area because it's more apparent to the human eye
+    # when a structure takes up more space in the bigger scheme of things
+    sorted_buildings = sorted(buildings, key=lambda k:-(k['area']/k['extent']))
+    areas = [(sorted_buildings[i]['number']-1) for i in range(num_buildings)]
+    extrema.append(('biggest', areas[0]))
+    extrema.append(('smallest', areas[-1]))
+    return extrema
+
 
 def print_info(buildings):
     for building in buildings:
