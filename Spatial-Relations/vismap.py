@@ -487,26 +487,81 @@ def is_north(s,t):
     # 1. Calculate slopes m1 and m2
     m1 = np.arctan(angle)
     m2 = -np.arctan(angle)
-    print "m1, m2", m1, m2
+    # print "m1, m2", m1, m2
 
     # 2. Find b = y - mx using origin
     p0 = s['centroid'] # x,y
     b1 = p0[1] - m1*p0[0]
     b2 = p0[1] - m2*p0[0]
-    print "b1, b2", b1, b2
+    # print "b1, b2", b1, b2
 
     # 3. Calculate 2 other points in FOV triangle
-    y = 100
+    y = 75
     x1 = int((y-b1)/m1)
     x2 = int((y-b2)/m2)
-    print "x1, x2", x1, x2
+    # print "x1, x2", x1, x2
+    p1 = (x1,y)
+    p2 = (x2,y)
     cv2.circle(map_campus, (x1,y), 6, (255,0,255), -1)
     cv2.circle(map_campus, (x2,y), 6, (255,0,255), -1)
 
+    # 4. Check which buildings centroids are in polygon
+    p4 = t['centroid'] # (x,y) for target
+    if is_in_triangle(p4,p0,p1,p2):
+    # cv2.pointPolygonTest()
+    # p = Path([[p0],[x1,y],[x2,y]])# closed
+    # if (p.contains_point([p4])):
+        cv2.circle(map_campus, p4, 6, (255,0,255), -1)
 
-# def same_side(p1,p2,a,b):
+def is_east(s,t):
+    map_h = len(map_binary)
+    map_w = len(map_binary[0])
 
-# def is_in_triangle(p1):
+    angle = 95
+
+    # 1. Calculate slopes m1 and m2
+    m1 = np.arctan(angle)
+    m2 = -np.arctan(angle)
+    # print "m1, m2", m1, m2
+
+    # 2. Find b = y - mx using origin
+    p0 = s['centroid'] # x,y
+    b1 = p0[1] - m1*p0[0]
+    b2 = p0[1] - m2*p0[0]
+    # print "b1, b2", b1, b2
+
+    # 3. Calculate 2 other points in FOV triangle
+    x = map_w
+    y1 = int((m1*x) + b1)
+    y2 = int((m2*x) + b2)
+
+    p1 = (x,y1)
+    p2 = (x,y2)
+    cv2.circle(map_campus, p1, 6, (255,0,255), -1)
+    cv2.circle(map_campus, p2, 6, (255,0,255), -1)
+
+    # 4. Check which buildings centroids are in polygon
+    p4 = t['centroid'] # (x,y) for target
+    if is_in_triangle(p4,p0,p1,p2):
+    # cv2.pointPolygonTest()
+    # p = Path([[p0],[x1,y],[x2,y]])# closed
+    # if (p.contains_point([p4])):
+        cv2.circle(map_campus, p4, 6, (0,255,0), -1)
+
+
+def same_side(p1,p2,a,b):
+    cp1 = np.cross(np.subtract(b,a), np.subtract(p1,a))
+    cp2 = np.cross(np.subtract(b,a), np.subtract(p2,a))
+    if np.dot(cp1,cp2) >= 0:
+        return True
+    else:
+        return False
+
+def is_in_triangle(p,a,b,c):
+    if same_side(p,a,b,c) and same_side(p,b,a,c) and same_side(p,c,a,b):
+        return True
+    else:
+        return False
 
 # def is_near(s,t):
 #     """Find out if 'Near to S is T'"""
@@ -547,7 +602,7 @@ def main():
         if source != target:
             s = buildings[source]
             t = buildings[target]
-            is_north(s,t)
+            is_east(s,t)
 
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
