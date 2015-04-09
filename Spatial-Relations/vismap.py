@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from matplotlib.path import Path
 
 # ============================================================
 # Globals
@@ -288,7 +289,6 @@ def describe_shape(building):
     corners_filled = [] # nw, ne, se, sw
     midpoints_filled = [] # n, e, s, west
 
-
     for corner in corners:
         if map_labeled[tuple(reversed(corner))] == building['number']:
             corners_filled.append(1)
@@ -448,6 +448,73 @@ def print_info(buildings):
 # The "Where"
 # ============================================================
 
+def analyze_relations(buildings):
+    """Find all binary spatial relationships for every pair,
+    and apply transitive reduction."""
+
+    num_buildings = len(buildings)
+
+    # Lookup tables
+    n_table = np.zeros((num_buildings, num_buildings),bool)
+    e_table = np.zeros((num_buildings, num_buildings),bool)
+    s_table = np.zeros((num_buildings, num_buildings),bool)
+    w_table = np.zeros((num_buildings, num_buildings),bool)
+    near_table = np.zeros((num_buildings, num_buildings),bool)
+
+    for source in xrange(0, num_buildings):
+        for target in xrange(0, num_buildings):
+            if source != target:
+                s = buildings[source]
+                t = buildings[target]
+                # n_array[s][t] = is_north(s,t)
+
+def is_north(s,t):
+    """Find out if 'North of S is T'
+    m1 = arctan(angle) left line
+    m2 = arctan(angle) right line
+    y  = mx + b
+    Create fov triangle with 3 points
+    Check if t is within the triangle
+    # Draw triangle points first
+    """
+    map_h = len(map_binary)
+    map_w = len(map_binary[0])
+
+    # Experiment with this value
+    # How about theta?
+    angle = 95
+
+    # 1. Calculate slopes m1 and m2
+    m1 = np.arctan(angle)
+    m2 = -np.arctan(angle)
+    print "m1, m2", m1, m2
+
+    # 2. Find b = y - mx using origin
+    p0 = s['centroid'] # x,y
+    b1 = p0[1] - m1*p0[0]
+    b2 = p0[1] - m2*p0[0]
+    print "b1, b2", b1, b2
+
+    # 3. Calculate 2 other points in FOV triangle
+    y = 100
+    x1 = int((y-b1)/m1)
+    x2 = int((y-b2)/m2)
+    print "x1, x2", x1, x2
+    cv2.circle(map_campus, (x1,y), 6, (255,0,255), -1)
+    cv2.circle(map_campus, (x2,y), 6, (255,0,255), -1)
+
+
+# def same_side(p1,p2,a,b):
+
+# def is_in_triangle(p1):
+
+# def is_near(s,t):
+#     """Find out if 'Near to S is T'"""
+
+# def transitive_reduce():
+#     """Output should use building names rather than numbers"""
+
+
 def is_index_valid(xy):
     x = xy[0]
     y = xy[1]
@@ -471,9 +538,22 @@ def main():
     buildings = analyze_buildings(names)
     print_info(buildings)
 
+    # Generate lookup table for building relations
+    # relations = analyze_relations(buildings)
+    # Try 11 Lowe and then 21 Journalism
+    source = 11
+    num_buildings = len(buildings)
+    for target in xrange(0, num_buildings):
+        if source != target:
+            s = buildings[source]
+            t = buildings[target]
+            is_north(s,t)
+
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
     print "Showing image..."
+
+
 
     # cv2.waitKey(0)
 
