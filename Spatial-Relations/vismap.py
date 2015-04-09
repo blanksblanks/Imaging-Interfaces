@@ -444,6 +444,19 @@ def print_info(buildings):
         print ' Area:', building['area']
         print ' Description', building['description']
 
+# ============================================================
+# The "Where"
+# ============================================================
+
+def is_index_valid(xy):
+    x = xy[0]
+    y = xy[1]
+    map_h = len(map_binary)
+    map_w = len(map_binary[0])
+    if (x > 0) and (x < map_w) and (y > 0) and (y < map_h):
+        return True
+    else:
+        return False
 
 # ============================================================
 # Main Invocation
