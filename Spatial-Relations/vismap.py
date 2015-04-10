@@ -503,7 +503,7 @@ def analyze_relations(buildings):
                 s_table[s][t] = is_south(source,target)
                 e_table[s][t] = is_east(source,target)
                 w_table[s][t] = is_west(source,target)
-                if s is 3 and t is 4:
+                if s is 23:
                     near_table[s][t] = is_near(source,target,True)
 
     print 'North relationships:'
@@ -754,15 +754,14 @@ def is_near(source,target,draw=False): # change to s,t later
     # Extract four corners: nw,ne,se,sw
     s1,s2,s3,s4 = extract_corners(x1,y1,w1,h1)
     t1,t2,t3,t4 = extract_corners(x2,y2,w2,h2)
-    t_corners = (t1,t2,t3,t4)
+    t0 = target['centroid']
+    t_points = (t1,t2,t3,t4,t0)
     # draw_rectangle(s1,s2,s3,s4)
 
     # Check whether any corner in expanded target rectangle
     # lies inside one of the two triangles that form the
     # source rectangle
-    for pt in t_corners:
-        cv2.circle(map_campus, pt, 6, (0,128,255), -1)
-        cv2.circle(map_campus, pt, 3, (0,255,255), -1)
+    for pt in t_points:
         if is_in_triangle(pt,s1,s2,s3) or is_in_triangle(pt,s3,s4,s1):
 
             # Optional
@@ -772,9 +771,10 @@ def is_near(source,target,draw=False): # change to s,t later
                 else:
                     draw_triangle(s3,s4,s1)
                 # draw_rectangle(t1,t2,t3,t4)
-                cv2.circle(map_campus, pt, 3, (0,255,255), -1)
                 cv2.circle(map_campus, source['centroid'], 6, (0,128,255), -1)
                 cv2.circle(map_campus, target['centroid'], 6, (0,128,255), -1)
+                cv2.circle(map_campus, pt, 6, (0,128,255), -1)
+                cv2.circle(map_campus, pt, 3, (0,255,255), -1)
 
             # Mandatoryif (draw):
             return True
