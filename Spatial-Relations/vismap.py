@@ -189,6 +189,18 @@ def analyze_buildings(names):
 
     return buildings
 
+def measure_areas():
+    """Count areas for each building"""
+    areas = {}
+    for x in xrange(MAP_W):
+        for y in xrange(MAP_W):
+            pixel = map_labeled[(y,x)]
+            if pixel in areas:
+                areas[pixel] += 1
+            else:
+                areas[pixel] = 1
+    print areas
+
 def analyze_extents(buildings):
     """Sort buildings by extent and determine cutoff for rectangles"""
     print 'Analyzing building extents (area/mbr) and convexity...'
@@ -471,22 +483,22 @@ def analyze_relations(buildings):
 
 def is_north(s,t):
     """Find out if 'North of S is T'"""
-    # Form triangle to north border
+    # Form triangle to north border: (x,0)
     return triangulate_FOV(s,t,-1,0,1)
 
 def is_south(s,t):
     """Find out if 'South of S is T'"""
-    # Form triangle to south border
+    # Form triangle to south border: (x,MAP_H)
     return triangulate_FOV(s,t,-1,MAP_H,1)
 
 def is_east(s,t):
     """Find out if 'East of S is T'"""
-    # Form triangle to east border
+    # Form triangle to east border: (MAP_W,y)
     return triangulate_FOV(s,t,MAP_W,-1,1)
 
 def is_west(s,t):
     """Find out if 'West of S is T'"""
-    # Form triangle to west border
+    # Form triangle to west border: (0,y)
     return triangulate_FOV(s,t,0,-1,1)
 
 def triangulate_FOV(s,t,x,y,slope,draw=False):
@@ -614,7 +626,7 @@ def analyze_relations_single(source, direction, buildings):
 
 def main():
 
-    # map_campus = np.zeros((512,512,3), np.uint8)
+    measure_areas()
 
     # Analyze image
     names = load_names('ass3-table.txt')
