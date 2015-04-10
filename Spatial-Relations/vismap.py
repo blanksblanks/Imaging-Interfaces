@@ -12,9 +12,12 @@ np.set_printoptions(threshold=np.nan)
 drawing = False # true if mouse is pressed
 mode = True # if True, draw rectangle. Press 'm' to toggle to curve
 ix,iy = -1,-1
+
 map_labeled = cv2.imread('ass3-labeled.pgm', 0) # load map_labeled as grayscale
 map_campus = cv2.imread('ass3-campus.pgm', 1) # load map_campus as color
 map_binary = cv2.cvtColor(map_campus,cv2.COLOR_BGR2GRAY) # load map_campus as grayscale
+MAP_H = len(map_binary)
+MAP_W = len(map_binary[0])
 
 # ============================================================
 # User Interface
@@ -51,7 +54,7 @@ def draw_circle(event,x,y,flags,param):
 # ============================================================
 
 def which_building(x,y):
-    idx = int(map_labeled[y][x][2])
+    idx = int(map_labeled[y][x]) - 1
     return idx
 
 def load_names(filename):
@@ -373,8 +376,6 @@ def describe_location(building):
     # TODO: fix to buildings[21]
     college_walk = (137,322)
     marker = college_walk[1]
-    map_h = len(map_binary)
-    map_w = len(map_binary[0])
 
     h = building['mbr'][1][1] - building['mbr'][0][1]
     w = building['mbr'][1][0] - building['mbr'][0][0]
@@ -391,32 +392,32 @@ def describe_location(building):
     # Locate buildings on borders or central axis
     if (cx < w) and (cy < h):
         location.append('northwest corner')
-    elif (cx > map_w-w) and (cy < h):
+    elif (cx > MAP_W-w) and (cy < h):
         location.append('northeast corner')
-    elif (cx > map_w-w) and (cy > map_h-h):
+    elif (cx > MAP_W-w) and (cy > MAP_H-h):
         location.append('southeast corner')
-    elif (cx < w) and (cy > map_h-h):
+    elif (cx < w) and (cy > MAP_H-h):
         location.append('southwest corner')
     elif (cx < w):
         location.append('western border')
     elif (cy < h):
         location.append('northern border')
-    elif (cx > map_w-w):
+    elif (cx > MAP_W-w):
         location.append('eastern border')
-    elif (cy > map_h-h):
+    elif (cy > MAP_H-h):
         location.append('southern border')
 
     # For buildings not on north/south borders, locate whether on
     # upper/central/lower campus
-    if (cy > marker) and (cy < map_h-h):
+    if (cy > marker) and (cy < MAP_H-h):
         location.append('lower campus')
-    elif (cy < marker) and (cy > (map_h-marker)/2):
+    elif (cy < marker) and (cy > (MAP_H-marker)/2):
         location.append('central campus')
-    elif (cy > h) and (cy < (map_h-marker)/2):
+    elif (cy > h) and (cy < (MAP_H-marker)/2):
         location.append('upper campus')
 
     # For buildings not on east/west borders
-    if (cx > (map_w/2)-w) and (cx < (map_w/2)+w) and (cx > w) and (cx < map_w-w):
+    if (cx > (MAP_W/2)-w) and (cx < (MAP_W/2)+w) and (cx > w) and (cx < MAP_W-w):
         location.append('on central axis')
 
     return location
@@ -469,85 +470,79 @@ def analyze_relations(buildings):
                 # n_array[s][t] = is_north(s,t)
 
 def is_north(s,t):
-    """Find out if 'North of S is T'
-    m1 = arctan(angle) left line
-    m2 = arctan(angle) right line
-    y  = mx + b
-    Create fov triangle with 3 points
-    Check if t is within the triangle
-    # Draw triangle points first
-    """
-    map_h = len(map_binary)
-    map_w = len(map_binary[0])
+    """Find out if 'North of S is T'"""
+    # Form triangle to north border
+    return triangulate_FOV(s,t,-1,0,1)
 
-    # Experiment with this value
-    # How about theta?
-    angle = 95
-
-    # 1. Calculate slopes m1 and m2
-    m1 = np.arctan(angle)
-    m2 = -np.arctan(angle)
-    # print "m1, m2", m1, m2
-
-    # 2. Find b = y - mx using origin
-    p0 = s['centroid'] # x,y
-    b1 = p0[1] - m1*p0[0]
-    b2 = p0[1] - m2*p0[0]
-    # print "b1, b2", b1, b2
-
-    # 3. Calculate 2 other points in FOV triangle
-    y = 75
-    x1 = int((y-b1)/m1)
-    x2 = int((y-b2)/m2)
-    # print "x1, x2", x1, x2
-    p1 = (x1,y)
-    p2 = (x2,y)
-    cv2.circle(map_campus, (x1,y), 6, (255,0,255), -1)
-    cv2.circle(map_campus, (x2,y), 6, (255,0,255), -1)
-
-    # 4. Check which buildings centroids are in polygon
-    p4 = t['centroid'] # (x,y) for target
-    if is_in_triangle(p4,p0,p1,p2):
-    # cv2.pointPolygonTest()
-    # p = Path([[p0],[x1,y],[x2,y]])# closed
-    # if (p.contains_point([p4])):
-        cv2.circle(map_campus, p4, 6, (255,0,255), -1)
+def is_south(s,t):
+    """Find out if 'South of S is T'"""
+    # Form triangle to south border
+    return triangulate_FOV(s,t,-1,MAP_H,1)
 
 def is_east(s,t):
-    map_h = len(map_binary)
-    map_w = len(map_binary[0])
+    """Find out if 'East of S is T'"""
+    # Form triangle to east border
+    return triangulate_FOV(s,t,MAP_W,-1,1)
 
-    angle = 90
+def is_west(s,t):
+    """Find out if 'West of S is T'"""
+    # Form triangle to west border
+    return triangulate_FOV(s,t,0,-1,1)
 
-    # 1. Calculate slopes m1 and m2
-    m1 = 1 # np.arctan(angle)
-    m2 = -1 # -np.arctan(angle)
-    print "m1, m2", m1, m2
+def triangulate_FOV(s,t,x,y,slope,draw=False):
+    """Create a triangle FOV with 3 points and
+    check if t is within triangle"""
 
-    # 2. Find b = y - mx using origin
-    p0 = s['centroid'] # x,y
+    # 0. Find (x,y) for source and target
+    p0 = s['centroid']
+    p4 = t['centroid']
+
+    # 1. Determine slopes m1 and m2
+    m1 = slope
+    m2 = -slope
+    # print "m1, m2", m1, m2
+
+    # 2. Find b = y - mx using origin and slope
     b1 = p0[1] - m1*p0[0]
     b2 = p0[1] - m2*p0[0]
     # print "b1, b2", b1, b2
 
     # 3. Calculate 2 other points in FOV triangle
-    x = map_w
-    y1 = int((m1*x) + b1)
-    y2 = int((m2*x) + b2)
+    # Direction is determined by what x or y values
+    # are given for p1 and p2
+    if (x == -1): # y given, so North/South direction
+        x1 = int((y-b1)/m1)
+        x2 = int((y-b2)/m2)
+        # print "x1, x2", x1, x2
+        p1 = (x1,y)
+        p2 = (x2,y)
 
-    p1 = (x,y1)
-    p2 = (x,y2)
-    cv2.circle(map_campus, p1, 6, (255,0,255), -1)
-    cv2.circle(map_campus, p2, 6, (255,0,255), -1)
+    elif (y == -1): # x given, so East/West direction
+        y1 = int((m1*x) + b1)
+        y2 = int((m2*x) + b2)
+        # print "y1, y2", x1, y2
+        p1 = (x,y1)
+        p2 = (x,y2)
 
-    # 4. Check which buildings centroids are in polygon
-    p4 = t['centroid'] # (x,y) for target
+    if (draw == True):
+        cv2.line(map_campus,p0,p1,(255,0,255),2)
+        cv2.line(map_campus,p0,p2,(255,0,255),2)
+
+    # 4. Check whether target centroid is in the field of view
     if is_in_triangle(p4,p0,p1,p2):
-    # cv2.pointPolygonTest()
-    # p = Path([[p0],[x1,y],[x2,y]])# closed
-    # if (p.contains_point([p4])):
-        cv2.circle(map_campus, p4, 6, (0,255,0), -1)
-    if (building['number'] == )
+        cv2.circle(map_campus, p4, 3, (255,0,255), -1)
+        return True
+
+    # Special case for College Walk, add centroids
+    if (t['number'] == 20):
+        p5 = tuple(np.subtract(t['centroid'], (MAP_W/4,0)))
+        p6 = tuple(np.add(t['centroid'], (MAP_W/4,0)))
+        if is_in_triangle(p5,p0,p1,p2) or is_in_triangle(p6,p0,p1,p2):
+            cv2.circle(map_campus, p5, 6, (0,255,0), -1)
+            cv2.circle(map_campus, p5, 6, (0,255,0), -1)
+            return True
+
+    return False # if not in FOV, return false
 
 def same_side(p1,p2,a,b):
     cp1 = np.cross(np.subtract(b,a), np.subtract(p1,a))
@@ -591,12 +586,27 @@ def get_euclidean_distance(s,t):
 def is_index_valid(xy):
     x = xy[0]
     y = xy[1]
-    map_h = len(map_binary)
-    map_w = len(map_binary[0])
-    if (x > 0) and (x < map_w) and (y > 0) and (y < map_h):
+    if (x > 0) and (x < MAP_W) and (y > 0) and (y < MAP_H):
         return True
     else:
         return False
+
+def analyze_relations_single(source, direction, buildings):
+    """Analyze relations for single building"""
+    # Try 11 Lowe and then 21 Journalism
+    num_buildings = len(buildings)
+    for target in xrange(0, num_buildings):
+        if source != target:
+            s = buildings[source]
+            t = buildings[target]
+            if (direction == "north"):
+                triangulate_FOV(s,t,-1,0,1,draw=True)
+            elif (direction == "east"):
+                triangulate_FOV(s,t,MAP_W,-1,1,draw=True)
+            elif (direction == "south"):
+                triangulate_FOV(s,t,-1,MAP_H,1,draw=True)
+            elif (direction == "west"):
+                triangulate_FOV(s,t,0,-1,1,draw=True)
 
 # ============================================================
 # Main Invocation
@@ -613,25 +623,11 @@ def main():
 
     # Generate lookup table for building relations
     # relations = analyze_relations(buildings)
-    # Try 11 Lowe and then 21 Journalism
-    source = 11
-    nearness = []
-    num_buildings = len(buildings)
-    for target in xrange(0, num_buildings):
-        # if source != target:
-        s = buildings[source]
-        t = buildings[target]
-        is_east(s,t)
-        # nearness.append(get_euclidean_distance(s,t))
-
-
-
+    analyze_relations_single(11, 'east', buildings)
 
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
     print "Showing image..."
-
-
 
     # cv2.waitKey(0)
 
