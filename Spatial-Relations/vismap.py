@@ -517,12 +517,12 @@ def is_east(s,t):
     map_h = len(map_binary)
     map_w = len(map_binary[0])
 
-    angle = 95
+    angle = 90
 
     # 1. Calculate slopes m1 and m2
-    m1 = np.arctan(angle)
-    m2 = -np.arctan(angle)
-    # print "m1, m2", m1, m2
+    m1 = 1 # np.arctan(angle)
+    m2 = -1 # -np.arctan(angle)
+    print "m1, m2", m1, m2
 
     # 2. Find b = y - mx using origin
     p0 = s['centroid'] # x,y
@@ -547,7 +547,7 @@ def is_east(s,t):
     # p = Path([[p0],[x1,y],[x2,y]])# closed
     # if (p.contains_point([p4])):
         cv2.circle(map_campus, p4, 6, (0,255,0), -1)
-
+    if (building['number'] == )
 
 def same_side(p1,p2,a,b):
     cp1 = np.cross(np.subtract(b,a), np.subtract(p1,a))
@@ -562,6 +562,24 @@ def is_in_triangle(p,a,b,c):
         return True
     else:
         return False
+
+def get_euclidean_distance(s,t):
+    """ private double getEuclideanDistance(Vertex v1, Vertex v2) {
+        double base = Math.abs(v1.x - v2.x); // x1 - x2
+        double height = Math.abs(v1.y - v2.y); // y1 - y2
+        double hypotenuse = Math
+                .sqrt((Math.pow(base, 2) + (Math.pow(height, 2))));
+        return hypotenuse;
+    """
+    x1 = s['centroid'][0]
+    x2 = t['centroid'][0]
+    y1 = s['centroid'][0]
+    y2 = t['centroid'][0]
+
+    base = abs(x1-x2)
+    height = abs(y1-y2)
+    hypotenuse = math.sqrt(math.pow(base,2)+(math.pow(height,2)))
+    return hypotenuse
 
 # def is_near(s,t):
 #     """Find out if 'Near to S is T'"""
@@ -597,12 +615,17 @@ def main():
     # relations = analyze_relations(buildings)
     # Try 11 Lowe and then 21 Journalism
     source = 11
+    nearness = []
     num_buildings = len(buildings)
     for target in xrange(0, num_buildings):
-        if source != target:
-            s = buildings[source]
-            t = buildings[target]
-            is_east(s,t)
+        # if source != target:
+        s = buildings[source]
+        t = buildings[target]
+        is_east(s,t)
+        # nearness.append(get_euclidean_distance(s,t))
+
+
+
 
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
