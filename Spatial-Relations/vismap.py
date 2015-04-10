@@ -536,7 +536,7 @@ def print_table(table,buildings):
                 count += 1
                 print 1, '',
             else:
-                print 0, '',
+                print '  ',
             if t == num_buildings-1:
                 print '\n',
 
