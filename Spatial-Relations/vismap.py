@@ -494,7 +494,12 @@ def analyze_relations(buildings):
             if source != target:
                 s = buildings[source]
                 t = buildings[target]
-                # n_array[s][t] = is_north(s,t)
+                n_table[s][t] = is_north(s,t)
+                s_table[s][t] = is_south(s,t)
+                e_table[s][t] = is_east(s,t)
+                w_table[s][t] = is_west(s,t)
+
+    print n_table
 
 def is_north(s,t):
     """Find out if 'North of S is T'"""
@@ -509,12 +514,12 @@ def is_south(s,t):
 def is_east(s,t):
     """Find out if 'East of S is T'"""
     # Form triangle to east border: (MAP_W,y)
-    return triangulate_FOV(s,t,MAP_W,-1,1)
+    return triangulate_FOV(s,t,MAP_W,-1,1.2)
 
 def is_west(s,t):
     """Find out if 'West of S is T'"""
     # Form triangle to west border: (0,y)
-    return triangulate_FOV(s,t,0,-1,1)
+    return triangulate_FOV(s,t,0,-1,1.2)
 
 def triangulate_FOV(s,t,x,y,slope,draw=False):
     """Create a triangle FOV with 3 points and
@@ -552,24 +557,44 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
         p2 = (x,y2)
 
     if (draw == True):
-        cv2.line(map_campus,p0,p1,(255,0,255),2)
-        cv2.line(map_campus,p0,p2,(255,0,255),2)
+        cv2.line(map_campus,p0,p1,(0,255,0),2)
+        cv2.line(map_campus,p0,p2,(0,255,0),2)
 
-    # 4. Check whether target centroid is in the field of view
+    4. Check whether target centroid is in the field of view
     if is_in_triangle(p4,p0,p1,p2):
-        cv2.circle(map_campus, p4, 3, (255,0,255), -1)
+        cv2.circle(map_campus, p4, 6, (0,255,0), -1)
         return True
 
     # Special case for College Walk, add centroids
-    if (t['number'] == 20):
-        p5 = tuple(np.subtract(t['centroid'], (MAP_W/4,0)))
-        p6 = tuple(np.add(t['centroid'], (MAP_W/4,0)))
-        if is_in_triangle(p5,p0,p1,p2) or is_in_triangle(p6,p0,p1,p2):
+    if (t['number'] == 21):
+        mid = t['centroid']
+        p5 = (MAP_W/4,mid[1])
+        p6 = (MAP_W*3/4,mid[1])
+        if is_in_triangle(p5,p0,p1,p2):
             cv2.circle(map_campus, p5, 6, (0,255,0), -1)
-            cv2.circle(map_campus, p5, 6, (0,255,0), -1)
+            return True
+        elif is_in_triangle(p6,p0,p1,p2):
+            cv2.circle(map_campus, p6, 6, (0,255,0), -1)
             return True
 
     return False # if not in FOV, return false
+
+def analyze_relations_single(source, direction, buildings):
+    """Analyze relations for single building"""
+    # Try 11 Lowe and then 21 Journalism
+    num_buildings = len(buildings)
+    for target in xrange(0, num_buildings):
+        if source != target:
+            s = buildings[source]
+            t = buildings[target]
+            if (direction == "north"):
+                triangulate_FOV(s,t,-1,0,1,draw=True)
+            elif (direction == "east"):
+                triangulate_FOV(s,t,MAP_W,-1,1.2,draw=True)
+            elif (direction == "south"):
+                triangulate_FOV(s,t,-1,MAP_H,1,draw=True)
+            elif (direction == "west"):
+                triangulate_FOV(s,t,0,-1,1.2,draw=True)
 
 def same_side(p1,p2,a,b):
     cp1 = np.cross(np.subtract(b,a), np.subtract(p1,a))
@@ -618,22 +643,7 @@ def is_index_valid(xy):
     else:
         return False
 
-def analyze_relations_single(source, direction, buildings):
-    """Analyze relations for single building"""
-    # Try 11 Lowe and then 21 Journalism
-    num_buildings = len(buildings)
-    for target in xrange(0, num_buildings):
-        if source != target:
-            s = buildings[source]
-            t = buildings[target]
-            if (direction == "north"):
-                triangulate_FOV(s,t,-1,0,1,draw=True)
-            elif (direction == "east"):
-                triangulate_FOV(s,t,MAP_W,-1,1,draw=True)
-            elif (direction == "south"):
-                triangulate_FOV(s,t,-1,MAP_H,1,draw=True)
-            elif (direction == "west"):
-                triangulate_FOV(s,t,0,-1,1,draw=True)
+
 
 # ============================================================
 # Main Invocation
@@ -648,7 +658,7 @@ def main():
 
     # Generate lookup table for building relations
     # relations = analyze_relations(buildings)
-    analyze_relations_single(11, 'east', buildings)
+    analyze_relations_single(11, 'south', buildings)
 
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
