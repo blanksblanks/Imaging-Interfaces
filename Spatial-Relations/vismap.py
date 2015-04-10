@@ -108,6 +108,7 @@ def measure_building(cnt, area, print_rect=False):
     # Let (x,y) be top-left coordinate and (w,h) be width and height
     # Find min, max value of x, min, max value of y
     x,y,w,h = cv2.boundingRect(cnt)
+    xywh = (x,y,w,h)
     mbr = [(x,y),(x+w,y+h)]
     roi = map_campus[y:y+h,x:x+w]
     # To draw a rectangle, you need T-L corner and B-R corner
@@ -170,7 +171,7 @@ def measure_building(cnt, area, print_rect=False):
     # dst = cv2.dilate(dst,None)
     # map_campus[dst>0.01*dst.max()]=[0,0,255]
 
-    return mbr, centroid, extent
+    return mbr, centroid, extent, xywh
 
 def analyze_buildings(names):
     """Find information about buildings and save in list of dicts"""
@@ -191,11 +192,12 @@ def analyze_buildings(names):
         building['number'] = idx
         building['name'] = names[str(idx)]
         building['area'] = areas[str(idx)]
-        mbr, centroid, extent = measure_building(cnt,building['area'])
+        mbr, centroid, extent, xywh = measure_building(cnt,building['area'])
         building['mbr'] = mbr
         building['centroid'] = centroid
-        building['cnt'] = cnt # may want to reuse this later
         building['extent'] = extent
+        building['xywh'] = xywh
+        building['cnt'] = cnt # may want to reuse this later
         buildings[(idx-1)] = building
 
     max_area, min_area = analyze_areas(buildings) # add True arg to print results
@@ -284,12 +286,15 @@ def describe_size(building, max_area):
     else:
         return 'tiny'
 
+def unpack(tup):
+    return tup[0],tup[1],tup[2],tup[3]
+
 def describe_shape(building):
     """Describe shape based on corner and midpoint counts"""
 
     descriptions = []
 
-    x,y,w,h = cv2.boundingRect(building['cnt'])
+    x,y,w,h = unpack(building['xywh'])
 
     # Tolerance based on ratio of min(w,h) as building sizes vary
     tolerance = min(w,h)/10
@@ -502,7 +507,6 @@ def analyze_relations(buildings):
     print_table(n_table, buildings)
 
 def print_table(table,buildings):
-
     num_buildings = len(buildings)
     count = 0
     print '  ',
