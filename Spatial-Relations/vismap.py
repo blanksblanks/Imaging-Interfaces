@@ -513,6 +513,44 @@ def analyze_relations(buildings):
     print 'West relationships:'
     print_table(w_table, buildings)
 
+    # Transitive reduction
+    for j in range(0, num_buildings):
+        for i in range(0, num_buildings):
+            if n_table[i][j]:
+                for k in range(0, num_buildings):
+                    if n_table[j][k]:
+                        n_table[i][k] = False
+            if s_table[i][j]:
+                for k in range(0, num_buildings):
+                    if s_table[j][k]:
+                        s_table[i][k] = False
+            if w_table[i][j]:
+                for k in range(0, num_buildings):
+                    if w_table[j][k]:
+                        w_table[i][k] = False
+            if e_table[i][j]:
+                for k in range(0, num_buildings):
+                    if e_table[j][k]:
+                        e_table[i][k] = False
+
+    # If j is north of i we no longer need to say i is south of j
+    # Similarly, east west relaitonships can be inferred
+    for s in range(0, num_buildings):
+        for t in range(0, num_buildings):
+            if n_table[s][t] and s_table[t][s]:
+                s_table[t][s] = False
+            if e_table[s][t] and w_table[t][s]:
+                w_table[t][s] = False
+
+    print 'North relationships:'
+    print_table(n_table, buildings)
+    print 'South relationships:'
+    print_table(s_table, buildings)
+    print 'East relationships:'
+    print_table(e_table, buildings)
+    print 'West relationships:'
+    print_table(w_table, buildings)
+
 def print_table(table,buildings):
     num_buildings = len(buildings)
     count = 0
@@ -541,7 +579,6 @@ def print_table(table,buildings):
                 print '\n',
 
     print 'Number of true relationships:', count
-
 
 def is_north(s,t):
     """Find out if 'North of S is T'"""
