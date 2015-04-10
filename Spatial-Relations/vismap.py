@@ -504,7 +504,14 @@ def analyze_relations(buildings):
                 e_table[s][t] = is_east(source,target)
                 w_table[s][t] = is_west(source,target)
 
+    print 'North relationships:'
     print_table(n_table, buildings)
+    print 'South relationships:'
+    print_table(s_table, buildings)
+    print 'East relationships:'
+    print_table(e_table, buildings)
+    print 'West relationships:'
+    print_table(w_table, buildings)
 
 def print_table(table,buildings):
     num_buildings = len(buildings)
