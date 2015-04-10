@@ -489,17 +489,48 @@ def analyze_relations(buildings):
     w_table = np.zeros((num_buildings, num_buildings),bool)
     near_table = np.zeros((num_buildings, num_buildings),bool)
 
-    for source in xrange(0, num_buildings):
-        for target in xrange(0, num_buildings):
-            if source != target:
-                s = buildings[source]
-                t = buildings[target]
-                n_table[s][t] = is_north(s,t)
-                s_table[s][t] = is_south(s,t)
-                e_table[s][t] = is_east(s,t)
-                w_table[s][t] = is_west(s,t)
+    for s in xrange(0, num_buildings):
+        for t in xrange(0, num_buildings):
+            if s != t:
+                source = buildings[s]
+                target = buildings[t]
+                n_table[s][t] = is_north(source,target)
+                s_table[s][t] = is_south(source,target)
+                e_table[s][t] = is_east(source,target)
+                w_table[s][t] = is_west(source,target)
 
-    print n_table
+    print_table(n_table, buildings)
+
+def print_table(table,buildings):
+
+    num_buildings = len(buildings)
+    count = 0
+    print '  ',
+    for s in xrange(num_buildings):
+        if s < 9:
+            print '', s+1,
+        elif s == 9:
+            print '', s+1,
+        else:
+            print s+1,
+    print ''
+    for s in xrange(num_buildings):
+        for t in xrange(num_buildings):
+            if t == 0:
+                if s < 9:
+                    print '', s+1, '',
+                else:
+                    print s+1, '',
+            if table[s][t]:
+                count += 1
+                print 1, '',
+            else:
+                print 0, '',
+            if t == num_buildings-1:
+                print '\n',
+
+    print 'Number of true relationships:', count
+
 
 def is_north(s,t):
     """Find out if 'North of S is T'"""
@@ -530,6 +561,8 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
     p4 = t['centroid']
 
     # 1. Determine slopes m1 and m2
+    # if (s['number'] == 21):
+    #     slope = 3
     m1 = slope
     m2 = -slope
     # print "m1, m2", m1, m2
@@ -560,23 +593,26 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
         cv2.line(map_campus,p0,p1,(0,255,0),2)
         cv2.line(map_campus,p0,p2,(0,255,0),2)
 
-    4. Check whether target centroid is in the field of view
+    # 4. Check whether target centroid is in the field of view
     if is_in_triangle(p4,p0,p1,p2):
-        cv2.circle(map_campus, p4, 6, (0,255,0), -1)
+        if (draw == True):
+            cv2.circle(map_campus, p4, 6, (0,255,0), -1)
         return True
 
-    # Special case for College Walk, add centroids
+    # Special case for campus-wide College Walk, add centroids
+    # TODO: change this after you do extrema
     if (t['number'] == 21):
         mid = t['centroid']
-        p5 = (MAP_W/4,mid[1])
-        p6 = (MAP_W*3/4,mid[1])
+        p5 = (MAP_W/5,mid[1])
+        p6 = (MAP_W*4/5,mid[1])
         if is_in_triangle(p5,p0,p1,p2):
-            cv2.circle(map_campus, p5, 6, (0,255,0), -1)
+            if (draw == True):
+                cv2.circle(map_campus, p5, 6, (0,255,0), -1)
             return True
         elif is_in_triangle(p6,p0,p1,p2):
-            cv2.circle(map_campus, p6, 6, (0,255,0), -1)
+            if (draw == True):
+               cv2.circle(map_campus, p6, 6, (0,255,0), -1)
             return True
-
     return False # if not in FOV, return false
 
 def analyze_relations_single(source, direction, buildings):
@@ -657,8 +693,8 @@ def main():
     print_info(buildings)
 
     # Generate lookup table for building relations
-    # relations = analyze_relations(buildings)
-    analyze_relations_single(11, 'south', buildings)
+    relations = analyze_relations(buildings)
+    # analyze_relations_single(20, 'west', buildings)
 
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
