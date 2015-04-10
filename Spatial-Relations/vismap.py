@@ -58,6 +58,7 @@ def which_building(x,y):
     return idx
 
 def load_names(filename):
+    """Load files from text file in order"""
     names = {}
     infile = open(filename, 'rU')
     while True:
@@ -69,6 +70,18 @@ def load_names(filename):
         except IndexError:
             break
     return names
+
+def measure_areas():
+    """Count areas for each building"""
+    areas = {}
+    for x in xrange(MAP_W):
+        for y in xrange(MAP_H):
+            pixel = map_labeled[(y,x)]
+            if pixel in areas:
+                areas[str(pixel)] += 1
+            else:
+                areas[str(pixel)] = 1
+    return areas
 
 def id_building(cnt):
     """Identify what building a contour represents by its pixel value"""
@@ -90,36 +103,47 @@ def id_building(cnt):
     else:
         return None
 
-def measure_building(cnt, print_rect=False):
+def measure_building(cnt, area, print_rect=False):
+    """Use OpenCV to create a bounding rectangle and find center of mass"""
     # Let (x,y) be top-left coordinate and (w,h) be width and height
     # Find min, max value of x, min, max value of y
     x,y,w,h = cv2.boundingRect(cnt)
-    mbr = [(x,y),(x+w,y+h)] # mbr[0] = T-L corner, mbr[1] = B-R corner
-    # print " Minimum Bounding Rectangle: ({0},{1}), ({2},{3})".format(x,y,(x+w),(y+h))
+    mbr = [(x,y),(x+w,y+h)]
     roi = map_campus[y:y+h,x:x+w]
-    # cv2.imwrite(str(idx) + '.jpg', roi)
     # To draw a rectangle, you need T-L corner and B-R corner
+    # We have mbr[0] = T-L corner, mbr[1] = B-R corner
     if print_rect:
         cv2.rectangle(map_campus,(x,y),(x+w,y+h),(200,0,0),2)
+    # print " Minimum Bounding Rectangle: ({0},{1}), ({2},{3})".format(x,y,(x+w),(y+h))
 
-    # Image moments help you to calculate center of mass, area of object, etc.
-    # cv2.moments() gives dictionary of all moment values calculated
-    M = cv2.moments(cnt)
-    # Centroid is given by the relations
-    cx = int(M['m10']/M['m00'])
-    cy = int(M['m01']/M['m00'])
+    # Calculate centroid based on bounding rectangle
+    cx = x+(w/2)
+    cy = y+(h/2)
     centroid = (cx, cy)
-    # print ' Center of Mass:', centroid
+    cv2.circle(map_campus, centroid, 3, (255,255,0), -1)
     # To draw a circle, you need its center coordinates and radius
     cv2.circle(map_campus, centroid, 3, (255,255,0), -1)
+    # print ' Center of Mass:', centroid
+
+    rect_area = w*h
+    extent = float(area)/rect_area
+
+    # Discarded methods
+    # Image moments help you to calculate center of mass, area of object, etc.
+    # cv2.moments() gives dictionary of all moment values calculated
+    # M = cv2.moments(cnt)
+    # Centroid is given by the relations
+    # cx = int(M['m10']/M['m00'])
+    # cy = int(M['m01']/M['m00'])
+    # centroid = (cx, cy)
 
     # Contour area is given by the function cv2.contourArea(cnt) or
-    area = M['m00']
+    # area = M['m00']
     # print ' Area:', area
     # area = cv2.contourArea(cnt)
     # x,y,w,h = cv2.boundingRect(cnt)
-    rect_area = w*h
-    extent = float(area)/rect_area
+    # rect_area = w*h
+    # extent = float(area)/rect_area
     # print ' Extent:', round(extent, 3)
 
     # label = str(idx) + ' : ' + str(area) + ' : ' + str(extent)
@@ -146,12 +170,14 @@ def measure_building(cnt, print_rect=False):
     # dst = cv2.dilate(dst,None)
     # map_campus[dst>0.01*dst.max()]=[0,0,255]
 
-    return mbr, centroid, area, extent
+    return mbr, centroid, extent
 
 def analyze_buildings(names):
     """Find information about buildings and save in list of dicts"""
     num_buildings = len(names)
     buildings = list(np.zeros(num_buildings))
+    areas = measure_areas()
+    print areas
 
     # Find contours in binary campus map image
     # Contours is a Python list of all the contours in the image
@@ -162,18 +188,18 @@ def analyze_buildings(names):
         idx = id_building(cnt)
         if idx is None:
             continue
-        mbr, centroid, area, extent = measure_building(cnt)
         building['number'] = idx
         building['name'] = names[str(idx)]
+        building['area'] = areas[str(idx)]
+        mbr, centroid, extent = measure_building(cnt,building['area'])
         building['mbr'] = mbr
         building['centroid'] = centroid
-        building['area'] = area
+        building['cnt'] = cnt # may want to reuse this later
         building['extent'] = extent
-        building['cnt'] = cnt
         buildings[(idx-1)] = building
 
     max_area, min_area = analyze_areas(buildings) # add True arg to print results
-    find_extrema(buildings)
+    # find_extrema(buildings)
 
     for building in buildings:
         location = describe_location(building)
@@ -183,23 +209,12 @@ def analyze_buildings(names):
         description.extend(location)
         building['description'] = description
 
-        # multiple = describe_multiplicity
+    # multiple = describe_multiplicity
     # analyze_extents(buildings)
     # analyze_shapes(buildings)
 
     return buildings
 
-def measure_areas():
-    """Count areas for each building"""
-    areas = {}
-    for x in xrange(MAP_W):
-        for y in xrange(MAP_W):
-            pixel = map_labeled[(y,x)]
-            if pixel in areas:
-                areas[pixel] += 1
-            else:
-                areas[pixel] = 1
-    print areas
 
 def analyze_extents(buildings):
     """Sort buildings by extent and determine cutoff for rectangles"""
@@ -625,8 +640,6 @@ def analyze_relations_single(source, direction, buildings):
 # ============================================================
 
 def main():
-
-    measure_areas()
 
     # Analyze image
     names = load_names('ass3-table.txt')
