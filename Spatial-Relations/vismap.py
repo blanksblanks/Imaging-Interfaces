@@ -503,6 +503,8 @@ def analyze_relations(buildings):
                 s_table[s][t] = is_south(source,target)
                 e_table[s][t] = is_east(source,target)
                 w_table[s][t] = is_west(source,target)
+                if s is 3 and t is 4:
+                    near_table[s][t] = is_near(source,target,True)
 
     print 'North relationships:'
     print_table(n_table, buildings)
@@ -512,6 +514,8 @@ def analyze_relations(buildings):
     print_table(e_table, buildings)
     print 'West relationships:'
     print_table(w_table, buildings)
+    print 'Near relationships:'
+    print_table(near_table, buildings)
 
     # Transitive reduction
     for j in range(0, num_buildings):
@@ -712,8 +716,68 @@ def get_euclidean_distance(s,t):
     hypotenuse = math.sqrt(math.pow(base,2)+(math.pow(height,2)))
     return hypotenuse
 
-# def is_near(s,t):
-#     """Find out if 'Near to S is T'"""
+def shift_corners(building, shift):
+    # Shift should be negative if you want to tuck in points
+    x,y,w,h = unpack(building['xywh'])
+    # Shift x,y,w,h so corners and midpoints are closer/farther to center
+    x -= shift
+    y -= shift
+    w += 2*shift
+    h += 2*shift
+    return x,y,w,h
+
+def extract_corners(x,y,w,h):
+    nw = (x,y)
+    ne = (x+w,y)
+    se = (x+w,y+h)
+    sw = (x,y+h)
+    return nw,ne,se,sw
+
+def draw_rectangle(nw,ne,se,sw):
+    cv2.line(map_campus,nw,ne,(0,128,255),2)
+    cv2.line(map_campus,ne,se,(0,128,255),2)
+    cv2.line(map_campus,se,sw,(0,128,255),2)
+    cv2.line(map_campus,sw,nw,(0,128,255),2)
+    if (diagonal):
+        cv2.line(map_campus,nw,se,(0,128,255),2)
+
+def draw_triangle(p1,p2,p3):
+    cv2.line(map_campus,p1,p2,(0,128,255),2)
+    cv2.line(map_campus,p2,p3,(0,128,255),2)
+    cv2.line(map_campus,p3,p1,(0,128,255),2)
+
+
+def is_near(source,target,draw=False): # change to s,t later
+    shift = 20 # Empirically chosen
+    x1,y1,w1,h1 = shift_corners(source,shift)
+    x2,y2,w2,h2 = shift_corners(target,shift)
+    # Extract four corners: nw,ne,se,sw
+    s1,s2,s3,s4 = extract_corners(x1,y1,w1,h1)
+    t1,t2,t3,t4 = extract_corners(x2,y2,w2,h2)
+    t_corners = (t1,t2,t3,t4)
+    # draw_rectangle(s1,s2,s3,s4)
+
+    # Check whether any corner in expanded target rectangle
+    # lies inside one of the two triangles that form the
+    # source rectangle
+    for pt in t_corners:
+        cv2.circle(map_campus, pt, 6, (0,128,255), -1)
+        cv2.circle(map_campus, pt, 3, (0,255,255), -1)
+        if is_in_triangle(pt,s1,s2,s3) or is_in_triangle(pt,s3,s4,s1):
+
+            # Optional
+            if (draw):
+                if is_in_triangle(pt,s1,s2,s3):
+                    draw_triangle(s1,s2,s3)
+                else:
+                    draw_triangle(s3,s4,s1)
+                # draw_rectangle(t1,t2,t3,t4)
+                cv2.circle(map_campus, pt, 3, (0,255,255), -1)
+                cv2.circle(map_campus, source['centroid'], 6, (0,128,255), -1)
+                cv2.circle(map_campus, target['centroid'], 6, (0,128,255), -1)
+
+            # Mandatoryif (draw):
+            return True
 
 # def transitive_reduce():
 #     """Output should use building names rather than numbers"""
