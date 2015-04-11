@@ -625,17 +625,20 @@ def analyze_relations(buildings):
 
 def print_table_info(table, buildings, direction):
     num_buildings = len(buildings)
+    # Track printed source indices so they are only printed once
+    printed = 0
     for s in xrange(0, num_buildings):
-        source = buildings[s]
-        if direction is 'Near' :
-            print 'Near to', source['name'], 'is:'
-        else:
-            print direction, 'of', source['name'], 'is:'
         for t in xrange(0, num_buildings):
             if table[s][t]:
                 target = buildings[t]
+                source = buildings[s]
+                if printed < s:
+                    printed += 1
+                    if direction is 'Near':
+                        print 'Near to', source['name'], 'is:'
+                    else:
+                        print direction, 'of', source['name'], 'is:'
                 print '    ', target['name']
-
 
 def print_table(table,num_buildings):
     count = 0
