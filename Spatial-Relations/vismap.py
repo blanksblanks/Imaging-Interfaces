@@ -35,7 +35,6 @@ MAP_W = len(map_binary[0])
 
 buildings = []
 num_buildings = 0
-# buildings = []
 
 # ============================================================
 # User Interface
@@ -57,15 +56,10 @@ def draw_circle(event,x,y,flags,param):
             click_count = 0
         else:
             click_count += 1
-
         color = colors[click_count]
 
         # get x,y coordinates of all similar pixels
         pixels = pixel_cloud(x,y)
-
-        # draw all similar pixels
-        # for item in pixeldraw:
-        #     image1.putpixel((item[0],item[1]), color)
 
     # elif event == cv2.EVENT_MOUSEMOVE:
     #     if drawing == True:
@@ -78,6 +72,7 @@ def draw_circle(event,x,y,flags,param):
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
         cv2.circle(map_campus,(x,y),pix/2,color,-1)
+        # white dot indicates original click location
         cv2.circle(map_campus,(x,y),1,(255,255,255),-1)
 
         # if mode == True:
@@ -111,7 +106,8 @@ def pixel_cloud(x,y):
         s = buildings[idx]
         t = buildings[-1]
         # Note these methods require xywh, centroid, number
-        relationships.append((is_north(s,t), is_east(s,t), is_near(s,t)))
+        idx = int(map_labeled[y][x])
+        relationships.append((is_north(s,t), is_east(s,t), is_near(s,t),idx))
 
     print "Relationships", relationships
 
@@ -156,8 +152,9 @@ def flood_fill(x,y,rel_table):
         s = buildings[idx]
         t = buildings[-1]
         t['centroid'] = (x,y) # change centroid to new x,y
+        idx = int(map_labeled[y][x])
         # Note these methods require xywh, centroid, number
-        rel.append((is_north(s,t), is_east(s,t), is_near(s,t)))
+        rel.append((is_north(s,t), is_east(s,t), is_near(s,t),idx))
 
     # Base case. If the current x,y is not the right rel do nothing
     if rel != rel_table:
@@ -957,6 +954,8 @@ def is_near(source,target,draw=False):
 
             # Mandatoryif (draw):
             return True
+
+    return False
 
 # def transitive_reduce():
 #     """Output should use building names rather than numbers"""
