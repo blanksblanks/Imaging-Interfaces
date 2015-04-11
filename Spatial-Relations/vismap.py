@@ -54,7 +54,7 @@ def draw_circle(event,x,y,flags,param):
 # ============================================================
 
 def which_building(x,y):
-    idx = int(map_labeled[y][x]) - 1
+    idx = int(map_labeled[y][x])
     return idx
 
 def load_names(filename):
