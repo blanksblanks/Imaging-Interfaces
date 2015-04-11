@@ -506,15 +506,17 @@ def analyze_relations(buildings):
                 near_table[s][t] = is_near(source,target)
 
     print 'North relationships:'
-    print_table(n_table, buildings)
+    count = print_table(n_table, num_buildings)
     print 'South relationships:'
-    print_table(s_table, buildings)
+    count += print_table(s_table, num_buildings)
     print 'East relationships:'
-    print_table(e_table, buildings)
+    count += print_table(e_table, num_buildings)
     print 'West relationships:'
-    print_table(w_table, buildings)
+    count += print_table(w_table, num_buildings)
     print 'Near relationships:'
-    print_table(near_table, buildings)
+    count += print_table(near_table, num_buildings)
+    print 'Total count:', count
+
 
     # Transitive reduction
     for t in range(0, num_buildings):
@@ -560,19 +562,38 @@ def analyze_relations(buildings):
 
     print 'After transitive reduction...'
     print 'North relationships:'
-    print_table(n_table, buildings)
+    count = print_table(n_table, num_buildings)
     print 'South relationships:'
-    print_table(s_table, buildings)
+    count += print_table(s_table, num_buildings)
     print 'East relationships:'
-    print_table(e_table, buildings)
+    count += print_table(e_table, num_buildings)
     print 'West relationships:'
-    print_table(w_table, buildings)
+    count += print_table(w_table, num_buildings)
     print 'Near relationships:'
-    print_table(near_table, buildings)
+    count += print_table(near_table, num_buildings)
+    print 'Total count:', count
 
 
-def print_table(table,buildings):
+    print_table_info(n_table, buildings, 'North')
+    print_table_info(s_table, buildings, 'South')
+    print_table_info(e_table, buildings, 'East')
+    print_table_info(w_table, buildings, 'West')
+    print_table_info(near_table, buildings, 'Near')
+
+def print_table_info(table, buildings, direction):
     num_buildings = len(buildings)
+    for s in xrange(0, num_buildings):
+        for t in xrange(0, num_buildings):
+            if table[s][t]:
+                source = buildings[s]
+                target = buildings[t]
+                if direction is 'Near':
+                    print 'Near to', source['name'], 'is', target['name']
+                else:
+                    print direction, 'of', source['name'], 'is', target['name']
+
+
+def print_table(table,num_buildings):
     count = 0
     print '  ',
     for s in xrange(num_buildings):
@@ -599,6 +620,7 @@ def print_table(table,buildings):
                 print '\n',
 
     print 'Number of true relationships:', count
+    return count
 
 def is_north(s,t):
     """Find out if 'North of S is T'"""
