@@ -12,12 +12,20 @@ np.set_printoptions(threshold=np.nan)
 # reset python's low default recursion limit (1000)
 sys.setrecursionlimit(150000)
 
+# green, red, blue, teal, yellow, orange, magenta
+colors = [(0,255,0),(0,0,255),(255,0,0), (255,255,0), (0,255,255),(0,128,255),(255,0,255)]
+color = colors[0]
+
+cloud = {}
+called = {}
+recursive_calls = 0
+# Blocks of pixels to check in each direction
+pix = 6
 
 drawing = False # true if mouse is pressed
-mode = True # if True, draw rectangle. Press 'm' to toggle to curve
+# mode = True # if True, draw rectangle. Press 'm' to toggle to curve
 ix,iy = -1,-1
-click_count = 0
-color = (0,0,255)
+click_count = -1
 
 map_labeled = cv2.imread('ass3-labeled.pgm', 0) # load map_labeled as grayscale
 map_campus = cv2.imread('ass3-campus.pgm', 1) # load map_campus as color
@@ -44,13 +52,13 @@ def draw_circle(event,x,y,flags,param):
         print 'Mouse clicked', ix,iy, 'building', idx
         print buildings[idx-1]['name']
 
-        # green for first click (S) and red for (T)
-        if click_count == 0:
-            color = (0,0,255)
-            click_count += 1
+        # alternate colors based on clicks
+        if click_count >= len(colors)-1: # reset
+            click_count = 0
         else:
-            color = (0, 255, 0)
-            clickcount = 0
+            click_count += 1
+
+        color = colors[click_count]
 
         # get x,y coordinates of all similar pixels
         pixels = pixel_cloud(x,y)
@@ -69,11 +77,13 @@ def draw_circle(event,x,y,flags,param):
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
-        if mode == True:
-            # cv2.rectangle(map_campus,(ix,iy),(x,y),(0,255,0),-1)
-            cv2.circle(map_campus,(x,y),5,(0,255,0),-1)
-        else:
-            cv2.circle(map_campus,(x,y),5,(0,0,255),-1)
+        cv2.circle(map_campus,(x,y),pix/2,color,-1)
+        cv2.circle(map_campus,(x,y),1,(255,255,255),-1)
+
+        # if mode == True:
+        #     # cv2.rectangle(map_campus,(ix,iy),(x,y),(0,255,0),-1)
+        # else:
+        #     cv2.circle(map_campus,(x,y),pix/2,(255,255,255),-1)
 
 # ============================================================
 # Source and Target Description and User Interface
@@ -93,6 +103,9 @@ def which_building(x,y):
     return idx
 
 def pixel_cloud(x,y):
+    global color, cloud
+    # Reset cloud every time this function is called
+    cloud = {}
     relationships = []
     for idx in range(0, num_buildings):
         s = buildings[idx]
@@ -104,12 +117,14 @@ def pixel_cloud(x,y):
 
     flood_fill(x,y,relationships)
 
-    cloud_size = len(cloud)
+    cloud_size = len(cloud) * pix
     print "Size of cloud:", cloud_size
     for xy in cloud:
-        row = xy[1]
         col = xy[0]
-        map_campus[row][col] = [0,255,0]
+        row = xy[1]
+        # map_campus[row][col] = [0,255,0]
+        # Draw filled circle with radius of 5
+        cv2.circle(map_campus,(col,row),pix/2,color,-1)
 
     # relationships = np.zeros((num_buildings,3),bool)
 
@@ -123,10 +138,6 @@ def pixel_cloud(x,y):
 #     neighbor_sum = reduce(lambda x, y: x+y, neighbors)
 #     n = len(neighbors)
 #     laplacian[i][j] = gray[i][j]*n - neighbor_sum
-
-cloud ={}
-called = {}
-recursive_calls = 0
 
 def flood_fill(x,y,rel_table):
     """Recursive algorithm that starts at x and y and changes any
@@ -152,25 +163,23 @@ def flood_fill(x,y,rel_table):
     if rel != rel_table:
         return
 
-    # Change the pixel at campus_map[x][y] to new color
-    # !!! and add to cloud list
-    # map_campus[y][x] = [0,255,0]
+    # Add pixel to list of clouds to be recolored and used later
     cloud[(x,y)] = ''
 
     # Recursive calls. Make a recursive call as long as we are not
     # on boundary
 
-    if x > 0: # left
-        flood_fill(x-1, y, rel_table)
+    if x > (pix-1): # left # originally 0
+        flood_fill(x-pix, y, rel_table)
 
-    if y > 0: # up
-        flood_fill(x, y-1, rel_table)
+    if y > (pix-1): # up # originally 0
+        flood_fill(x, y-pix, rel_table)
 
-    if x < MAP_W-1: # right
-        flood_fill(x+1, y, rel_table)
+    if x < MAP_W-(pix+1): # right # originally MAP_W-1
+        flood_fill(x+pix, y, rel_table)
 
-    if y < MAP_H-1: # down
-        flood_fill(x, y+1, rel_table)
+    if y < MAP_H-(pix+1): # down # originall MAP_H-`
+        flood_fill(x, y+pix, rel_table)
 
 def index_valid(x,y):
     x = xy[0]
@@ -981,10 +990,11 @@ def main():
     while(1):
         cv2.imshow('Columbia Campus Map', map_campus)
         k = cv2.waitKey(1) & 0xFF
-        if k == ord('m'):
-            print 'pressed m'
-            mode = not mode
-        elif k == 27:
+        # if k == ord('m'):
+        #     print 'pressed m'
+        #     mode = not mode
+        # el
+        if k == 27:
             break
 
     cv2.destroyAllWindows()
