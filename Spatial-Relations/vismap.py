@@ -503,8 +503,7 @@ def analyze_relations(buildings):
                 s_table[s][t] = is_south(source,target)
                 e_table[s][t] = is_east(source,target)
                 w_table[s][t] = is_west(source,target)
-                if s is 23:
-                    near_table[s][t] = is_near(source,target,True)
+                near_table[s][t] = is_near(source,target)
 
     print 'North relationships:'
     print_table(n_table, buildings)
@@ -518,27 +517,27 @@ def analyze_relations(buildings):
     print_table(near_table, buildings)
 
     # Transitive reduction
-    for j in range(0, num_buildings):
-        for i in range(0, num_buildings):
-            if n_table[i][j]:
-                for k in range(0, num_buildings):
-                    if n_table[j][k]:
-                        n_table[i][k] = False
-            if s_table[i][j]:
-                for k in range(0, num_buildings):
-                    if s_table[j][k]:
-                        s_table[i][k] = False
-            if w_table[i][j]:
-                for k in range(0, num_buildings):
-                    if w_table[j][k]:
-                        w_table[i][k] = False
-            if e_table[i][j]:
-                for k in range(0, num_buildings):
-                    if e_table[j][k]:
-                        e_table[i][k] = False
+    for t in range(0, num_buildings):
+        for s in range(0, num_buildings):
+            if n_table[s][t]:
+                for u in range(0, num_buildings):
+                    if n_table[t][u]:
+                        n_table[s][u] = False
+            if s_table[s][t]:
+                for u in range(0, num_buildings):
+                    if s_table[t][u]:
+                        s_table[s][u] = False
+            if w_table[s][t]:
+                for u in range(0, num_buildings):
+                    if w_table[t][u]:
+                        w_table[s][u] = False
+            if e_table[s][t]:
+                for u in range(0, num_buildings):
+                    if e_table[t][u]:
+                        e_table[s][u] = False
 
-    # If j is north of i we no longer need to say i is south of j
-    # Similarly, east west relaitonships can be inferred
+    # If t is north of s we no longer need to say s is south of t
+    # Similarly, east west relationships can be inferred
     for s in range(0, num_buildings):
         for t in range(0, num_buildings):
             if n_table[s][t] and s_table[t][s]:
@@ -546,6 +545,20 @@ def analyze_relations(buildings):
             if e_table[s][t] and w_table[t][s]:
                 w_table[t][s] = False
 
+    # If relationship is reflexive, keep the smaller building's relationship
+    for s in xrange(0, num_buildings):
+        for t in xrange(0, num_buildings):
+            source = buildings[s]
+            target = buildings[t]
+            if near_table[s][t] and near_table[t][s]:
+                if source['area'] > target['area']:
+                    near_table[s][t] = False
+                else:
+                    near_table[t][s] = False
+            elif near_table[s][t] and not near_table[t][s]:
+                print 'Near to', source['name'], 'is', target['name'], 'but not other way around'
+
+    print 'After transitive reduction...'
     print 'North relationships:'
     print_table(n_table, buildings)
     print 'South relationships:'
@@ -554,6 +567,9 @@ def analyze_relations(buildings):
     print_table(e_table, buildings)
     print 'West relationships:'
     print_table(w_table, buildings)
+    print 'Near relationships:'
+    print_table(near_table, buildings)
+
 
 def print_table(table,buildings):
     num_buildings = len(buildings)
@@ -747,7 +763,8 @@ def draw_triangle(p1,p2,p3):
     cv2.line(map_campus,p3,p1,(0,128,255),2)
 
 
-def is_near(source,target,draw=False): # change to s,t later
+def is_near(source,target,draw=False):
+    """Near to S is T"""
     shift = 20 # Empirically chosen
     x1,y1,w1,h1 = shift_corners(source,shift)
     x2,y2,w2,h2 = shift_corners(target,shift)
