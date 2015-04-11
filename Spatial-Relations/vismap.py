@@ -12,12 +12,15 @@ np.set_printoptions(threshold=np.nan)
 drawing = False # true if mouse is pressed
 mode = True # if True, draw rectangle. Press 'm' to toggle to curve
 ix,iy = -1,-1
+click_count = 0
+color = (0,0,255)
 
 map_labeled = cv2.imread('ass3-labeled.pgm', 0) # load map_labeled as grayscale
 map_campus = cv2.imread('ass3-campus.pgm', 1) # load map_campus as color
 map_binary = cv2.cvtColor(map_campus,cv2.COLOR_BGR2GRAY) # load map_campus as grayscale
 MAP_H = len(map_binary)
 MAP_W = len(map_binary[0])
+# buildings = []
 
 # ============================================================
 # User Interface
@@ -25,21 +28,37 @@ MAP_W = len(map_binary[0])
 
 # mouse callback function
 def draw_circle(event,x,y,flags,param):
-    global ix,iy,drawing,mode
+    global ix,iy,drawing,mode,click_count,color
 
     if event == cv2.EVENT_LBUTTONDOWN:
         drawing = True
         ix,iy = x,y
         idx = which_building(ix,iy)
         print 'Mouse clicked', ix,iy, 'building', idx
+        print buildings[idx-1]['name']
 
-    elif event == cv2.EVENT_MOUSEMOVE:
-        if drawing == True:
-            if mode == True:
-                # cv2.rectangle(map_campus,(ix,iy),(x,y),(0,255,0),-1)
-                cv2.circle(map_campus,(x,y),5,(0,255,0),-1)
-            else:
-                cv2.circle(map_campus,(x,y),5,(0,0,255),-1)
+        # green for first click (S) and red for (T)
+        if click_count == 0:
+            color = (0,0,255)
+            click_count += 1
+        else:
+            color = (0, 255, 0)
+            clickcount = 0
+
+        # get x,y coordinates of all similar pixels
+        pixels = pixel_cloud(x,y)
+
+        # draw all similar pixels
+        # for item in pixeldraw:
+        #     image1.putpixel((item[0],item[1]), color)
+
+    # elif event == cv2.EVENT_MOUSEMOVE:
+    #     if drawing == True:
+    #         if mode == True:
+    #             # cv2.rectangle(map_campus,(ix,iy),(x,y),(0,255,0),-1)
+    #             cv2.circle(map_campus,(x,y),5,(0,255,0),-1)
+    #         else:
+    #             cv2.circle(map_campus,(x,y),5,(0,0,255),-1)
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
@@ -50,12 +69,38 @@ def draw_circle(event,x,y,flags,param):
             cv2.circle(map_campus,(x,y),5,(0,0,255),-1)
 
 # ============================================================
-# The "What"
+# Source and Target Description and User Interface
 # ============================================================
 
 def which_building(x,y):
     idx = int(map_labeled[y][x])
+    # if idx is 0:
+    #     building = {}
+    #     building['number']
+    #     buildings[num_buildings] =
+
+    #     building['number'] = idx
+    #     building['name'] = names[str(idx)]
+    #     building['area'] = areas[str(idx)]
+    #     mbr, centroid, extent, xywh = measure_building(cnt,building['area'])
+    #     building['mbr'] = mbr
+    #     building['centroid'] = centroid
+    #     building['extent'] = extent
+    #     building['xywh'] = xywh
+    #     building['cnt'] = cnt # may want to reuse this later
+    #     buildings[(idx-1)] = building
+
+
+
     return idx
+
+def pixel_cloud(x,y):
+    print x+y
+    # relationships = np.zeros((num_buildings,3),bool)
+
+# ============================================================
+# The "What"
+# ============================================================
 
 def load_names(filename):
     """Load files from text file in order"""
@@ -175,6 +220,7 @@ def measure_building(cnt, area, print_rect=False):
 
 def analyze_buildings(names):
     """Find information about buildings and save in list of dicts"""
+    global num_buildings, buildings
     num_buildings = len(names)
     buildings = list(np.zeros(num_buildings))
     areas = measure_areas()
@@ -215,10 +261,7 @@ def analyze_buildings(names):
     # analyze_extents(buildings)
     # analyze_shapes(buildings)
 
-    return buildings
-
-
-def analyze_extents(buildings):
+def analyze_extents():
     """Sort buildings by extent and determine cutoff for rectangles"""
     print 'Analyzing building extents (area/mbr) and convexity...'
     num_buildings = len(buildings)
@@ -472,10 +515,10 @@ def find_extrema(buildings):
 def print_info(buildings):
     for building in buildings:
         print building['number'], ':', building['name']
-        print ' Minimum Bounding Rectangle:', building['mbr'][0], ',', building['mbr'][1]
-        print ' Center of Mass:', building['centroid']
-        print ' Area:', building['area']
-        print ' Description', building['description']
+        print '     Minimum Bounding Rectangle:', building['mbr'][0], ',', building['mbr'][1]
+        print '     Center of Mass:', building['centroid']
+        print '     Area:', building['area']
+        print '     Description', building['description']
 
 # ============================================================
 # The "Where"
@@ -583,14 +626,15 @@ def analyze_relations(buildings):
 def print_table_info(table, buildings, direction):
     num_buildings = len(buildings)
     for s in xrange(0, num_buildings):
+        source = buildings[s]
+        if direction is 'Near' :
+            print 'Near to', source['name'], 'is:'
+        else:
+            print direction, 'of', source['name'], 'is:'
         for t in xrange(0, num_buildings):
             if table[s][t]:
-                source = buildings[s]
                 target = buildings[t]
-                if direction is 'Near':
-                    print 'Near to', source['name'], 'is', target['name']
-                else:
-                    print direction, 'of', source['name'], 'is', target['name']
+                print '    ', target['name']
 
 
 def print_table(table,num_buildings):
@@ -840,7 +884,8 @@ def main():
 
     # Analyze image
     names = load_names('ass3-table.txt')
-    buildings = analyze_buildings(names)
+    # buildings =
+    analyze_buildings(names)
     print_info(buildings)
 
     # Generate lookup table for building relations
