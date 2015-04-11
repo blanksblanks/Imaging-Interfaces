@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from matplotlib.path import Path
+import sys
 
 # ============================================================
 # Globals
@@ -8,6 +9,9 @@ from matplotlib.path import Path
 
 # set such that full image array is printed out
 np.set_printoptions(threshold=np.nan)
+# reset python's low default recursion limit (1000)
+sys.setrecursionlimit(150000)
+
 
 drawing = False # true if mouse is pressed
 mode = True # if True, draw rectangle. Press 'm' to toggle to curve
@@ -20,6 +24,9 @@ map_campus = cv2.imread('ass3-campus.pgm', 1) # load map_campus as color
 map_binary = cv2.cvtColor(map_campus,cv2.COLOR_BGR2GRAY) # load map_campus as grayscale
 MAP_H = len(map_binary)
 MAP_W = len(map_binary[0])
+
+buildings = []
+num_buildings = 0
 # buildings = []
 
 # ============================================================
@@ -73,30 +80,107 @@ def draw_circle(event,x,y,flags,param):
 # ============================================================
 
 def which_building(x,y):
+    global num_buildings, buildings
     idx = int(map_labeled[y][x])
-    # if idx is 0:
-    #     building = {}
-    #     building['number']
-    #     buildings[num_buildings] =
-
-    #     building['number'] = idx
-    #     building['name'] = names[str(idx)]
-    #     building['area'] = areas[str(idx)]
-    #     mbr, centroid, extent, xywh = measure_building(cnt,building['area'])
-    #     building['mbr'] = mbr
-    #     building['centroid'] = centroid
-    #     building['extent'] = extent
-    #     building['xywh'] = xywh
-    #     building['cnt'] = cnt # may want to reuse this later
-    #     buildings[(idx-1)] = building
-
-
-
+    # add new x,y as a new building
+    building = {}
+    building['number'] = num_buildings
+    building['name'] = 'Building ' + str(num_buildings)
+    building['centroid'] = (x,y)
+    building['xywh'] = (x,y,1,1)
+    buildings.append(building)
+    num_buildings = len(buildings)
     return idx
 
 def pixel_cloud(x,y):
-    print x+y
+    relationships = []
+    for idx in range(0, num_buildings):
+        s = buildings[idx]
+        t = buildings[-1]
+        # Note these methods require xywh, centroid, number
+        relationships.append((is_north(s,t), is_east(s,t), is_near(s,t)))
+
+    print "Relationships", relationships
+
+    flood_fill(x,y,relationships)
+
+    cloud_size = len(cloud)
+    print "Size of cloud:", cloud_size
+    for xy in cloud:
+        row = xy[1]
+        col = xy[0]
+        map_campus[row][col] = [0,255,0]
+
     # relationships = np.zeros((num_buildings,3),bool)
+
+# def check_neighbors(i,j):
+#     """Check all 8 neighbors around this pixel"""
+#     for x in xrange(i-1,i+2):
+#         for y in xrange(j-1,j+2):
+#             if not (x is i and y is j) and index_valid(x,y):
+
+#                 cloud.append(row, col)neighbors.append(gray[row][col])
+#     neighbor_sum = reduce(lambda x, y: x+y, neighbors)
+#     n = len(neighbors)
+#     laplacian[i][j] = gray[i][j]*n - neighbor_sum
+
+cloud ={}
+called = {}
+recursive_calls = 0
+
+def flood_fill(x,y,rel_table):
+    """Recursive algorithm that starts at x and y and changes any
+    adjacent pixel that match rel_table"""
+    global cloud, called, recursive_calls
+    if (x,y) in called:
+        return
+    else:
+        recursive_calls += 1
+        called[(x,y)] = ''
+
+    print recursive_calls, ':', x,y
+
+    rel = []
+    for idx in range(0, num_buildings):
+        s = buildings[idx]
+        t = buildings[-1]
+        t['centroid'] = (x,y) # change centroid to new x,y
+        # Note these methods require xywh, centroid, number
+        rel.append((is_north(s,t), is_east(s,t), is_near(s,t)))
+
+    # Base case. If the current x,y is not the right rel do nothing
+    if rel != rel_table:
+        return
+
+    # Change the pixel at campus_map[x][y] to new color
+    # !!! and add to cloud list
+    # map_campus[y][x] = [0,255,0]
+    cloud[(x,y)] = ''
+
+    # Recursive calls. Make a recursive call as long as we are not
+    # on boundary
+
+    if x > 0: # left
+        flood_fill(x-1, y, rel_table)
+
+    if y > 0: # up
+        flood_fill(x, y-1, rel_table)
+
+    if x < MAP_W-1: # right
+        flood_fill(x+1, y, rel_table)
+
+    if y < MAP_H-1: # down
+        flood_fill(x, y+1, rel_table)
+
+def index_valid(x,y):
+    x = xy[0]
+    y = xy[1]
+    if (x > 0) and (x < MAP_W) and (y > 0) and (y < MAP_H):
+        return True
+    else:
+        return False
+
+
 
 # ============================================================
 # The "What"
@@ -264,7 +348,7 @@ def analyze_buildings(names):
 def analyze_extents():
     """Sort buildings by extent and determine cutoff for rectangles"""
     print 'Analyzing building extents (area/mbr) and convexity...'
-    num_buildings = len(buildings)
+    # num_buildings = len(buildings)
     sorted_buildings = sorted(buildings, key=lambda k:-k['extent'])
     indices = [(sorted_buildings[i]['number']-1) for i in range(num_buildings)]
     for i in indices:
@@ -274,7 +358,7 @@ def analyze_extents():
 
 def analyze_areas(buildings, print_results=False):
     """Sort buildings by area, determine cutoff for size and return max"""
-    num_buildings = len(buildings)
+    # num_buildings = len(buildings)
     sorted_buildings = sorted(buildings, key=lambda k:-k['area'])
     indices = [(sorted_buildings[i]['number']-1) for i in range(num_buildings)]
     areas = [(sorted_buildings[i]['area']) for i in range(num_buildings)]
@@ -302,7 +386,7 @@ def analyze_areas(buildings, print_results=False):
 def analyze_shapes(buildings):
     """Sort building by shape similarity (not very good results)"""
     print 'Analyzing shape similarity with cv2.matchShapes...'
-    num_buildings = len(buildings)
+    # num_buildings = len(buildings)
     shape_sim = {}
     for i in xrange(num_buildings):
         for j in xrange(i+1, num_buildings):
@@ -499,7 +583,7 @@ def describe_location(building):
 
 def find_extrema(buildings):
     """Find extrema and return as list of tuple pairs of building index and extrema description"""
-    num_buildings = len(buildings)
+    # num_buildings = len(buildings)
     extrema = []
 
     # Find largest and smallest by MBR area
@@ -528,7 +612,7 @@ def analyze_relations(buildings):
     """Find all binary spatial relationships for every pair,
     and apply transitive reduction."""
 
-    num_buildings = len(buildings)
+    # num_buildings = len(buildings)
 
     # Lookup tables
     n_table = np.zeros((num_buildings, num_buildings),bool)
@@ -624,7 +708,7 @@ def analyze_relations(buildings):
     print_table_info(near_table, buildings, 'Near')
 
 def print_table_info(table, buildings, direction):
-    num_buildings = len(buildings)
+    # num_buildings = len(buildings)
     # Track printed source indices so they are only printed once
     printed = 0
     for s in xrange(0, num_buildings):
@@ -755,7 +839,7 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
 def analyze_relations_single(source, direction, buildings):
     """Analyze relations for single building"""
     # Try 11 Lowe and then 21 Journalism
-    num_buildings = len(buildings)
+    # num_buildings = len(buildings)
     for target in xrange(0, num_buildings):
         if source != target:
             s = buildings[source]
@@ -869,13 +953,6 @@ def is_near(source,target,draw=False):
 #     """Output should use building names rather than numbers"""
 
 
-def is_index_valid(xy):
-    x = xy[0]
-    y = xy[1]
-    if (x > 0) and (x < MAP_W) and (y > 0) and (y < MAP_H):
-        return True
-    else:
-        return False
 
 
 
