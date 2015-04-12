@@ -47,8 +47,8 @@ def draw_circle(event,x,y,flags,param):
     if event == cv2.EVENT_LBUTTONDOWN:
         drawing = True
         ix,iy = x,y
-        idx = which_building(ix,iy)
-        print 'Mouse clicked', ix,iy, 'building', idx
+        idx = create_building(ix,iy)
+        print 'Mouse clicked: ({},{})'.format(ix,iy)
         print buildings[idx-1]['name']
 
         # alternate colors based on clicks
@@ -71,9 +71,9 @@ def draw_circle(event,x,y,flags,param):
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
-        cv2.circle(map_campus,(x,y),pix/2,color,-1)
+        cv2.circle(map_campus,(ix,iy),pix/2,color,-1)
         # white dot indicates original click location
-        cv2.circle(map_campus,(x,y),1,(255,255,255),-1)
+        cv2.circle(map_campus,(ix,iy),1,(255,255,255),-1)
 
         # if mode == True:
         #     # cv2.rectangle(map_campus,(ix,iy),(x,y),(0,255,0),-1)
@@ -84,7 +84,7 @@ def draw_circle(event,x,y,flags,param):
 # Source and Target Description and User Interface
 # ============================================================
 
-def which_building(x,y):
+def create_building(x,y):
     global num_buildings, buildings
     idx = int(map_labeled[y][x])
     # add new x,y as a new building
@@ -102,14 +102,14 @@ def pixel_cloud(x,y):
     # Reset cloud every time this function is called
     cloud = {}
     relationships = []
-    for idx in range(0, num_buildings):
-        s = buildings[idx]
-        t = buildings[-1]
+    for num in range(0, num_buildings-1-click_count):
+        s = buildings[num]
+        t = buildings[-1] # the newly added building
         # Note these methods require xywh, centroid, number
         idx = int(map_labeled[y][x])
         relationships.append((is_north(s,t), is_east(s,t), is_near(s,t),idx))
 
-    print "Relationships", relationships
+    # print "Relationships", relationships
 
     flood_fill(x,y,relationships)
 
@@ -139,22 +139,25 @@ def flood_fill(x,y,rel_table):
     """Recursive algorithm that starts at x and y and changes any
     adjacent pixel that match rel_table"""
     global cloud, called, recursive_calls
+
     if (x,y) in called:
         return
     else:
         recursive_calls += 1
         called[(x,y)] = ''
 
-    print recursive_calls, ':', x,y
+    # print recursive_calls, ':', x,y
 
     rel = []
-    for idx in range(0, num_buildings):
-        s = buildings[idx]
+    for num in range(0, num_buildings-1-click_count):
+        s = buildings[num]
         t = buildings[-1]
         t['centroid'] = (x,y) # change centroid to new x,y
         idx = int(map_labeled[y][x])
         # Note these methods require xywh, centroid, number
         rel.append((is_north(s,t), is_east(s,t), is_near(s,t),idx))
+
+    # print rel
 
     # Base case. If the current x,y is not the right rel do nothing
     if rel != rel_table:
@@ -706,7 +709,6 @@ def analyze_relations(buildings):
     count += print_table(near_table, num_buildings)
     print 'Total count:', count
 
-
     print_table_info(n_table, buildings, 'North')
     print_table_info(s_table, buildings, 'South')
     print_table_info(e_table, buildings, 'East')
@@ -783,42 +785,65 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
     """Create a triangle FOV with 3 points and
     check if t is within triangle"""
 
-    # 0. Find (x,y) for source and target
-    p0 = s['centroid']
-    p4 = t['centroid']
+    if y is 0:
+        fov = 'north_fov'
+    elif y is MAP_H:
+        fov = 'south_fov'
+    elif x is MAP_W:
+        fov = 'east_fov'
+    elif x is 0:
+        fov = 'west_fov'
 
-    # 1. Determine slopes m1 and m2
-    # if (s['number'] == 21):
-    #     slope = 3
-    m1 = slope
-    m2 = -slope
-    # print "m1, m2", m1, m2
+    if fov not in s:
+        # 0. Find (x,y) for source and target
+        p0 = s['centroid']
+        p4 = t['centroid']
 
-    # 2. Find b = y - mx using origin and slope
-    b1 = p0[1] - m1*p0[0]
-    b2 = p0[1] - m2*p0[0]
-    # print "b1, b2", b1, b2
+        # 1. Determine slopes m1 and m2
+        # if (s['number'] == 21):
+        #     slope = 3
+        m1 = slope
+        m2 = -slope
+        # print "m1, m2", m1, m2
 
-    # 3. Calculate 2 other points in FOV triangle
-    # Direction is determined by what x or y values
-    # are given for p1 and p2
-    if (x == -1): # y given, so North/South direction
-        x1 = int((y-b1)/m1)
-        x2 = int((y-b2)/m2)
-        # print "x1, x2", x1, x2
-        p1 = (x1,y)
-        p2 = (x2,y)
+        # 2. Find b = y - mx using origin and slope
+        b1 = p0[1] - m1*p0[0]
+        b2 = p0[1] - m2*p0[0]
+        # print "b1, b2", b1, b2
 
-    elif (y == -1): # x given, so East/West direction
-        y1 = int((m1*x) + b1)
-        y2 = int((m2*x) + b2)
-        # print "y1, y2", x1, y2
-        p1 = (x,y1)
-        p2 = (x,y2)
+        # 3. Calculate 2 other points in FOV triangle
+        # Direction is determined by what x or y values
+        # are given for p1 and p2
+        if (x == -1): # y given, so North/South direction
+            x1 = int((y-b1)/m1)
+            x2 = int((y-b2)/m2)
+            # print "x1, x2", x1, x2
+            p1 = (x1,y)
+            p2 = (x2,y)
 
-    if (draw == True):
-        cv2.line(map_campus,p0,p1,(0,255,0),2)
-        cv2.line(map_campus,p0,p2,(0,255,0),2)
+        elif (y == -1): # x given, so East/West direction
+            y1 = int((m1*x) + b1)
+            y2 = int((m2*x) + b2)
+            # print "y1, y2", x1, y2
+            p1 = (x,y1)
+            p2 = (x,y2)
+
+        if (draw == True):
+            cv2.line(map_campus,p0,p1,(0,255,0),2)
+            cv2.line(map_campus,p0,p2,(0,255,0),2)
+
+
+        # Mandatory: Add new FOV to building dictionary for reuse
+        s[fov] = (p0,p1,p2)
+        idx = s['number'] - 1
+        buildings[idx] = s
+
+    # If FOV has been pre-calculated, just use the points to check
+    else:
+        p0 = s[fov][0]
+        p1 = s[fov][1]
+        p2 = s[fov][2]
+        p4 = t['centroid']
 
     # 4. Check whether target centroid is in the field of view
     if is_in_triangle(p4,p0,p1,p2):
@@ -841,6 +866,89 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
                cv2.circle(map_campus, p6, 6, (0,255,0), -1)
             return True
     return False # if not in FOV, return false
+
+    # 4. Check whether target centroid is in the field of view
+    if is_in_triangle(p3,p0,p1,p2):
+        if (draw == True):
+            cv2.circle(map_campus, p3, 6, (0,255,0), -1)
+        return True
+
+    # Special case for campus-wide College Walk, add centroids
+    # TODO: change this after you do extrema
+    if (t['number'] == 21):
+        mid = t['centroid']
+        p5 = (MAP_W/5,mid[1])
+        p6 = (MAP_W*4/5,mid[1])
+        if is_in_triangle(p5,p0,p1,p2):
+            if (draw == True):
+                cv2.circle(map_campus, p5, 6, (0,255,0), -1)
+            return True
+        elif is_in_triangle(p6,p0,p1,p2):
+            if (draw == True):
+               cv2.circle(map_campus, p6, 6, (0,255,0), -1)
+            return True
+
+    return False # if not in FOV, return false
+
+    # # 0. Find (x,y) for source and target
+    # p0 = s['centroid']
+    # p4 = t['centroid']
+
+    # # 1. Determine slopes m1 and m2
+    # # if (s['number'] == 21):
+    # #     slope = 3
+    # m1 = slope
+    # m2 = -slope
+    # # print "m1, m2", m1, m2
+
+    # # 2. Find b = y - mx using origin and slope
+    # b1 = p0[1] - m1*p0[0]
+    # b2 = p0[1] - m2*p0[0]
+    # # print "b1, b2", b1, b2
+
+    # # 3. Calculate 2 other points in FOV triangle
+    # # Direction is determined by what x or y values
+    # # are given for p1 and p2
+    # if (x == -1): # y given, so North/South direction
+    #     x1 = int((y-b1)/m1)
+    #     x2 = int((y-b2)/m2)
+    #     # print "x1, x2", x1, x2
+    #     p1 = (x1,y)
+    #     p2 = (x2,y)
+
+    # elif (y == -1): # x given, so East/West direction
+    #     y1 = int((m1*x) + b1)
+    #     y2 = int((m2*x) + b2)
+    #     # print "y1, y2", x1, y2
+    #     p1 = (x,y1)
+    #     p2 = (x,y2)
+
+    # if (draw == True):
+    #     cv2.line(map_campus,p0,p1,(0,255,0),2)
+    #     cv2.line(map_campus,p0,p2,(0,255,0),2)
+
+    # # 4. Check whether target centroid is in the field of view
+    # if is_in_triangle(p4,p0,p1,p2):
+    #     if (draw == True):
+    #         cv2.circle(map_campus, p4, 6, (0,255,0), -1)
+    #     return True
+
+    # # Special case for campus-wide College Walk, add centroids
+    # # TODO: change this after you do extrema
+    # if (t['number'] == 21):
+    #     mid = t['centroid']
+    #     p5 = (MAP_W/5,mid[1])
+    #     p6 = (MAP_W*4/5,mid[1])
+    #     if is_in_triangle(p5,p0,p1,p2):
+    #         if (draw == True):
+    #             cv2.circle(map_campus, p5, 6, (0,255,0), -1)
+    #         return True
+    #     elif is_in_triangle(p6,p0,p1,p2):
+    #         if (draw == True):
+    #            cv2.circle(map_campus, p6, 6, (0,255,0), -1)
+    #         return True
+    # return False # if not in FOV, return false
+
 
 def analyze_relations_single(source, direction, buildings):
     """Analyze relations for single building"""
@@ -939,7 +1047,6 @@ def is_near(source,target,draw=False):
     # source rectangle
     for pt in t_points:
         if is_in_triangle(pt,s1,s2,s3) or is_in_triangle(pt,s3,s4,s1):
-
             # Optional
             if (draw):
                 if is_in_triangle(pt,s1,s2,s3):
@@ -951,10 +1058,8 @@ def is_near(source,target,draw=False):
                 cv2.circle(map_campus, target['centroid'], 6, (0,128,255), -1)
                 cv2.circle(map_campus, pt, 6, (0,128,255), -1)
                 cv2.circle(map_campus, pt, 3, (0,255,255), -1)
-
-            # Mandatoryif (draw):
+            # Mandatory
             return True
-
     return False
 
 # def transitive_reduce():
