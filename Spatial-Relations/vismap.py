@@ -94,7 +94,7 @@ def create_building(x,y):
     building['centroid'] = (x,y)
     building['xywh'] = (x,y,1,1)
     buildings.append(building)
-    num_buildings = len(buildings)
+    # num_buildings = len(buildings)
     return idx
 
 def pixel_cloud(x,y):
@@ -102,7 +102,8 @@ def pixel_cloud(x,y):
     # Reset cloud every time this function is called
     cloud = {}
     relationships = []
-    for num in range(0, num_buildings-1-click_count):
+    # for num in xrange(0, num_buildings-1-click_count):
+    for num in xrange(0, num_buildings-1):
         s = buildings[num]
         t = buildings[-1] # the newly added building
         # Note these methods require xywh, centroid, number
@@ -110,12 +111,14 @@ def pixel_cloud(x,y):
         # relationships.append((is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t), is_near(s,t),idx))
         relationships.append((is_north(s,t), is_east(s,t), is_near(s,t),idx))
 
-    # print "Relationships", relationships
+    print "Relationships", relationships
 
     flood_fill(x,y,relationships)
 
     cloud_size = len(cloud) * pix
-    print "Size of cloud:", cloud_size
+    print "Size of cloud:", cloud_size, "(recursive calls:", recursive_calls, ")"
+
+    # Color in the cloud
     for xy in cloud:
         col = xy[0]
         row = xy[1]
@@ -150,7 +153,8 @@ def flood_fill(x,y,rel_table):
     # print recursive_calls, ':', x,y
 
     rel = []
-    for num in range(0, num_buildings-1-click_count):
+    # for num in range(0, num_buildings-1-click_count):
+    for num in xrange(0, num_buildings-1):
         s = buildings[num]
         t = buildings[-1]
         t['centroid'] = (x,y) # change centroid to new x,y
