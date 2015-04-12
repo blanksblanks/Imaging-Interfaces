@@ -336,7 +336,8 @@ def analyze_buildings(names):
         building['centroid'] = centroid
         building['extent'] = extent
         building['xywh'] = xywh
-        building['cnt'] = cnt # may want to reuse this later
+        # Note: this was used by analyze_shapes and analyze_extents
+        # building['cnt'] = cnt
         buildings[(idx-1)] = building
 
     max_area, min_area = analyze_areas(buildings) # add True arg to print results
