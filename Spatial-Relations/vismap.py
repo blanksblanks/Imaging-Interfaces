@@ -107,6 +107,7 @@ def pixel_cloud(x,y):
         t = buildings[-1] # the newly added building
         # Note these methods require xywh, centroid, number
         idx = int(map_labeled[y][x])
+        # relationships.append((is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t), is_near(s,t),idx))
         relationships.append((is_north(s,t), is_east(s,t), is_near(s,t),idx))
 
     # print "Relationships", relationships
@@ -155,7 +156,8 @@ def flood_fill(x,y,rel_table):
         t['centroid'] = (x,y) # change centroid to new x,y
         idx = int(map_labeled[y][x])
         # Note these methods require xywh, centroid, number
-        rel.append((is_north(s,t), is_east(s,t), is_near(s,t),idx))
+        rel.append((is_north(s,t),is_east(s,t),is_near(s,t),idx))
+        # rel.append((is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t), is_near(s,t),idx))
 
     # print rel
 
@@ -1044,7 +1046,7 @@ def main():
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
     print "Showing image..."
 
-    print buildings
+    # print buildings
 
     # cv2.waitKey(0)
 
