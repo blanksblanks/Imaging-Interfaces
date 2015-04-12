@@ -423,7 +423,10 @@ def describe_size(building, max_area):
         return 'tiny'
 
 def unpack(tup):
-    return tup[0],tup[1],tup[2],tup[3]
+    if len(tup) is 4:
+        return tup[0],tup[1],tup[2],tup[3]
+    elif len(tup) is 5:
+        return tup[0],tup[1],tup[2],tup[3],tup[4]
 
 def describe_shape(building):
     """Describe shape based on corner and midpoint counts"""
@@ -832,7 +835,6 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
             cv2.line(map_campus,p0,p1,(0,255,0),2)
             cv2.line(map_campus,p0,p2,(0,255,0),2)
 
-
         # Mandatory: Add new FOV to building dictionary for reuse
         s[fov] = (p0,p1,p2)
         idx = s['number'] - 1
@@ -889,66 +891,6 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
             return True
 
     return False # if not in FOV, return false
-
-    # # 0. Find (x,y) for source and target
-    # p0 = s['centroid']
-    # p4 = t['centroid']
-
-    # # 1. Determine slopes m1 and m2
-    # # if (s['number'] == 21):
-    # #     slope = 3
-    # m1 = slope
-    # m2 = -slope
-    # # print "m1, m2", m1, m2
-
-    # # 2. Find b = y - mx using origin and slope
-    # b1 = p0[1] - m1*p0[0]
-    # b2 = p0[1] - m2*p0[0]
-    # # print "b1, b2", b1, b2
-
-    # # 3. Calculate 2 other points in FOV triangle
-    # # Direction is determined by what x or y values
-    # # are given for p1 and p2
-    # if (x == -1): # y given, so North/South direction
-    #     x1 = int((y-b1)/m1)
-    #     x2 = int((y-b2)/m2)
-    #     # print "x1, x2", x1, x2
-    #     p1 = (x1,y)
-    #     p2 = (x2,y)
-
-    # elif (y == -1): # x given, so East/West direction
-    #     y1 = int((m1*x) + b1)
-    #     y2 = int((m2*x) + b2)
-    #     # print "y1, y2", x1, y2
-    #     p1 = (x,y1)
-    #     p2 = (x,y2)
-
-    # if (draw == True):
-    #     cv2.line(map_campus,p0,p1,(0,255,0),2)
-    #     cv2.line(map_campus,p0,p2,(0,255,0),2)
-
-    # # 4. Check whether target centroid is in the field of view
-    # if is_in_triangle(p4,p0,p1,p2):
-    #     if (draw == True):
-    #         cv2.circle(map_campus, p4, 6, (0,255,0), -1)
-    #     return True
-
-    # # Special case for campus-wide College Walk, add centroids
-    # # TODO: change this after you do extrema
-    # if (t['number'] == 21):
-    #     mid = t['centroid']
-    #     p5 = (MAP_W/5,mid[1])
-    #     p6 = (MAP_W*4/5,mid[1])
-    #     if is_in_triangle(p5,p0,p1,p2):
-    #         if (draw == True):
-    #             cv2.circle(map_campus, p5, 6, (0,255,0), -1)
-    #         return True
-    #     elif is_in_triangle(p6,p0,p1,p2):
-    #         if (draw == True):
-    #            cv2.circle(map_campus, p6, 6, (0,255,0), -1)
-    #         return True
-    # return False # if not in FOV, return false
-
 
 def analyze_relations_single(source, direction, buildings):
     """Analyze relations for single building"""
@@ -1029,18 +971,30 @@ def draw_triangle(p1,p2,p3):
     cv2.line(map_campus,p2,p3,(0,128,255),2)
     cv2.line(map_campus,p3,p1,(0,128,255),2)
 
+def get_near_points(building):
+    if 'near_points' not in building:
+        shift = 20 # Empirically chosen
+        # Extract four corners: nw,ne,se,sw
+        x1,y1,w1,h1 = shift_corners(building,shift)
+        p1,p2,p3,p4 = extract_corners(x1,y1,w1,h1)
+        p0 = building['centroid']
+        points = (p1,p2,p3,p4,p0)
+        # draw_rectangle(p1,p2,p3,p4)
+        # Add new points to source
+        building['near_points'] = points
+        idx = building['number'] - 1
+        buildings[idx] = building
+    else:
+        points = building['near_points']
+    return points
 
 def is_near(source,target,draw=False):
     """Near to S is T"""
-    shift = 20 # Empirically chosen
-    x1,y1,w1,h1 = shift_corners(source,shift)
-    x2,y2,w2,h2 = shift_corners(target,shift)
-    # Extract four corners: nw,ne,se,sw
-    s1,s2,s3,s4 = extract_corners(x1,y1,w1,h1)
-    t1,t2,t3,t4 = extract_corners(x2,y2,w2,h2)
-    t0 = target['centroid']
-    t_points = (t1,t2,t3,t4,t0)
-    # draw_rectangle(s1,s2,s3,s4)
+    s_points = get_near_points(source)
+    t_points = get_near_points(target)
+
+    s1,s2,s3,s4,s0 = unpack(s_points)
+    t1,t2,t3,t4,t0 = unpack(t_points)
 
     # Check whether any corner in expanded target rectangle
     # lies inside one of the two triangles that form the
@@ -1054,8 +1008,8 @@ def is_near(source,target,draw=False):
                 else:
                     draw_triangle(s3,s4,s1)
                 # draw_rectangle(t1,t2,t3,t4)
-                cv2.circle(map_campus, source['centroid'], 6, (0,128,255), -1)
-                cv2.circle(map_campus, target['centroid'], 6, (0,128,255), -1)
+                cv2.circle(map_campus, s0, 6, (0,128,255), -1)
+                cv2.circle(map_campus, t0, 6, (0,128,255), -1)
                 cv2.circle(map_campus, pt, 6, (0,128,255), -1)
                 cv2.circle(map_campus, pt, 3, (0,255,255), -1)
             # Mandatory
