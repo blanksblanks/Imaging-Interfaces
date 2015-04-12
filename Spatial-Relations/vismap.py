@@ -215,7 +215,7 @@ def measure_areas():
     for x in xrange(MAP_W):
         for y in xrange(MAP_H):
             pixel = map_labeled[(y,x)]
-            if pixel in areas:
+            if str(pixel) in areas:
                 areas[str(pixel)] += 1
             else:
                 areas[str(pixel)] = 1
@@ -317,7 +317,7 @@ def analyze_buildings(names):
     num_buildings = len(names)
     buildings = list(np.zeros(num_buildings))
     areas = measure_areas()
-    print areas
+    # print areas
 
     # Find contours in binary campus map image
     # Contours is a Python list of all the contours in the image
@@ -1043,6 +1043,8 @@ def main():
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', draw_circle)
     print "Showing image..."
+
+    print buildings
 
     # cv2.waitKey(0)
 
