@@ -264,9 +264,10 @@ def flood_fill(x,y,rel_table):
         t = buildings[-1]
         t['centroid'] = (x,y) # change centroid to new x,y
         idx = int(map_labeled[y][x])
+        near = is_near(s,t) or is_near(t,s)
         # Note these methods require xywh, centroid, number
         # rel.append([is_north(s,t),is_east(s,t),is_near(s,t),idx])
-        rel.append([is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t), is_near(s,t),idx])
+        rel.append([is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t),near,num,idx])
 
     # print rel
 
@@ -473,11 +474,28 @@ def analyze_buildings(names):
 
     # Reduce descriptions
     find_extrema()
+    find_ambiguity()
 
     # multiple = describe_multiplicity
     # analyze_extents(buildings)
     # analyze_shapes(buildings)
 
+def find_ambiguity():
+    global buildings
+    for idx in xrange(num_buildings):
+        bldg1 = buildings[idx]
+        for jdx in xrange(num_buildings):
+            bldg2 = buildings[jdx]
+            if idx != jdx and bldg1['description'] == bldg2['description']:
+                if is_north(bldg1,bldg2):
+                    bldg2['description'].insert(0,'northern')
+                    bldg1['description'].insert(0,'southern')
+                elif is_south(bldg1,bldg2):
+                    bldg1['description'].insert(0,'northern')
+                    bldg2['description'].insert(0,'southern')
+                buildings[idx] = bldg1
+                buildings[jdx] = bldg2
+                # print 'Ambiguity between', bldg1['name'], 'and', bldg2['name']
 
 def find_extrema():
     """Find singularly defining characteristics and remove other details"""
@@ -487,7 +505,7 @@ def find_extrema():
         description = bldg1['description']
         for characteristic in description:
             count = 0
-            if characteristic == 'almost rectangular':
+            if characteristic == 'almost rectangular' or 'southernmost':
                 break
             for jdx in xrange(num_buildings):
                 bldg2 = buildings[jdx]
@@ -696,10 +714,10 @@ def describe_shape(building):
     # If width is > 1.5 * height, "wide", E-W oriented
     # If height is > 1.5 * width, "tall", N-S oriented
     # Decided not to include symmetrically oriented
-    if (w > 1.5 * h):
-        descriptions.append('oriented East-West')
-    elif (h > 1.5 * w):
-        descriptions.append('oriented North-South')
+    # if (w > 1.5 * h):
+    #     descriptions.append('oriented East-West')
+    # elif (h > 1.5 * w):
+    #     descriptions.append('oriented North-South')
 
     # print ' Description', descriptions
     return descriptions
@@ -723,15 +741,15 @@ def describe_location(building):
     cy = building['centroid'][1]
 
     # Draw lines
-    if building['number'] is 10:
-        cv2.line(map_campus,(0,marker/2),(MAP_W,marker/2),[0,255,0],2)
-        cv2.line(map_campus,(0,marker),(MAP_W,marker),[0,255,0],2)
-        cv2.line(map_campus,(0,h),(MAP_W,h),[0,255,0],2)
-        cv2.line(map_campus,(0,MAP_H-h),(MAP_W,MAP_H-h),[0,255,0],2)
-        cv2.line(map_campus,(int((MAP_W/2)-w),0),(int((MAP_W/2)-w),MAP_H),[0,255,0],2)
-        cv2.line(map_campus,(int((MAP_W/2)+w),0),(int((MAP_W/2)+w),MAP_H),[0,255,0],2)
-        cv2.line(map_campus,(w,0),(w,MAP_H),[0,255,0],2)
-        cv2.line(map_campus,(MAP_W-w,0),(MAP_W-w,MAP_H),[0,255,0],2)
+    # if building['number'] is 10:
+    #     cv2.line(map_campus,(0,marker/2),(MAP_W,marker/2),[0,255,0],2)
+    #     cv2.line(map_campus,(0,marker),(MAP_W,marker),[0,255,0],2)
+    #     cv2.line(map_campus,(0,h),(MAP_W,h),[0,255,0],2)
+    #     cv2.line(map_campus,(0,MAP_H-h),(MAP_W,MAP_H-h),[0,255,0],2)
+    #     cv2.line(map_campus,(int((MAP_W/2)-w),0),(int((MAP_W/2)-w),MAP_H),[0,255,0],2)
+    #     cv2.line(map_campus,(int((MAP_W/2)+w),0),(int((MAP_W/2)+w),MAP_H),[0,255,0],2)
+    #     cv2.line(map_campus,(w,0),(w,MAP_H),[0,255,0],2)
+    #     cv2.line(map_campus,(MAP_W-w,0),(MAP_W-w,MAP_H),[0,255,0],2)
 
     # Locate buildings on borders or central axis
     if (cx < w) and (cy < h):
