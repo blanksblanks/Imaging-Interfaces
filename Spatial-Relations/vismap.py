@@ -509,7 +509,7 @@ def analyze_what(names):
         # building['cnt'] = cnt
         buildings[(idx-1)] = building
 
-    max_area, min_area = analyze_areas(buildings,print_results=True) # add True arg to print results
+    max_area, min_area = analyze_areas(buildings) # add True arg to print results
 
     find_monument()
 
@@ -1296,7 +1296,9 @@ def generate_graph():
     for s in xrange(0, num_buildings):
         distances = {}
         for t in xrange(0, num_buildings):
-            if s != t:
+            near = is_near(s,t) or is_near(t,s)
+            # Only generate paths between near nodes
+            if s != t and near:
                 distances[str(t)] = get_euclidean_distance(s,t)
         graph[str(s)] = distances
     # print dist_table
@@ -1315,7 +1317,7 @@ def dijkstra(graph,src,dest,visited=[],distances={},predecessors={}):
         path=[]
         pred=dest
         while pred != None:
-            path.append(pred)
+            path.append(int(pred))
             pred=predecessors.get(pred,None)
         print('Shortest Path: '+str(path)+" (Cost: "+str(distances[dest])+')')
     else:
@@ -1381,12 +1383,13 @@ def main():
     print_info()
 
     # Step 2. Generate 'where' lookup table for building relations
+    # analyze_single_where(20, 'west', buildings)
     n_table, s_table, e_table, w_table, near_table = analyze_where(buildings)
 
     # Step 4. Generate path for user
     graph = generate_graph()
-    dijkstra(graph,'0','26')
-    # analyze_single_where(20, 'west', buildings)
+    # print 'Graph', graph
+    dijkstra(graph,'0','22')
 
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', click_event)
