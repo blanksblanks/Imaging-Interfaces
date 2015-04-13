@@ -57,10 +57,9 @@ paths = []
 # S5G5: Butler ^- Physical Fitness Center
 # S6G6: Journalism -^ Uris
 # S7G7: Avery ^- Shapiro
-# S8G8: Lion's Court ^- Lowe
-S_LIST = [(8,320),(35,4),]
-G_LIST = [(205,51),(137,291),(257,374),]
-
+# S8G8: Lawn ^- Low
+S_LIST = [(8,320),(35,4),(78,477),(232,285),(132,443),(52,398),(203,160),(135,369)]
+G_LIST = [(205,51),(137,291),(257,374),(36,178),(88,68),(134,97),(143,37),(172,212)]
 
 # ============================================================
 # User Interface
@@ -272,17 +271,17 @@ def what_description(idx):
 def ts_description(x, y, relationships, sorted_indices):
     coordinates = '     Click (%d,%d)' %(x,y)
     if click_count%2 == 1:
-        print 'Target: ' #+ coordinates
+        print 'TARGET: ' #+ coordinates
         # description = 'Then go to the building that is '
     else:
-        print 'Source: ' #+ coordinates
+        print 'SOURCE: ' #+ coordinates
         # description = 'Go to the nearby building that is '
 
     # Check if click point is outside or inside
     if (relationships[0][-1] == -1):
         description = coordinates + ' is '
     else:
-        description = coordinates + ' is inside and to the '
+        description = coordinates + ' is INSIDE and to the '
 
     # print 'Sorted indices:', sorted_indices
     # print 'Relationships:', relationships
@@ -291,23 +290,23 @@ def ts_description(x, y, relationships, sorted_indices):
     for idx in sorted_indices:
         count = 0
         if relationships[idx][0]:
-            description += 'north of '
+            description += 'NORTH of '
             count += 1
         if relationships[idx][1]:
-            description += 'south of '
+            description += 'SOUTH of '
             count += 1
         if relationships[idx][2]:
             if count == 0:
                 count += 1
             else:
                 description = description[:-4]
-            description += 'east of '
+            description += 'EAST of '
         if relationships[idx][3]:
             if count == 0:
                 count += 1
             else:
                 description = description[:-4]
-            description += 'and west of '
+            description += 'WEST of '
         # Implied nearness
         # if relationships[idx][4]:
         #     if count == 0:
@@ -1340,6 +1339,30 @@ def generate_graph():
     # print dist_table
     return graph
 
+def find_closest(xy):
+    x = xy[0]
+    y = xy[1]
+    building_idx = int(map_labeled[y][x])-1
+    if building_idx is not -1:
+        return building_idx
+    else:
+        distances = np.zeros(num_buildings)
+        for i in xrange(num_buildings):
+            distances[i] = get_euclidean_distance(xy,i)
+        return distances.argmin()
+
+def generate_paths():
+    global paths, S_LIST, G_LIST
+
+    starting_points = []
+
+    # Find description for starting point
+    for xy in S_LIST:
+        start = find_closest(xy)
+        starting_points.append(start)
+
+    print starting_points
+
 def dijkstra(graph,src,dest,visited=[],distances={},predecessors={}):
     """Calculates a shortest path tree routed in src. Based on this tutorial:
     http://geekly-yours.blogspot.com/2014/03/dijkstra-algorithm-python-example-source-code-shortest-path.html
@@ -1397,16 +1420,21 @@ def get_euclidean_distance(source,target):
                 .sqrt((Math.pow(base, 2) + (Math.pow(height, 2))));
         return hypotenuse;
     """
-    # Get buildings from indices
-    s = buildings[source]
-    t = buildings[target]
 
     # Take min(w,h) of source building into account
     # margin = (min(s['xywh'][2],s['xywh'][3])/2)
 
-    x1 = s['centroid'][0]
+    if (type(source) == int):
+        # Get building from indices
+        s = buildings[source]
+        x1 = s['centroid'][0]
+        y1 = s['centroid'][1]
+    else:
+        x1 = source[0]
+        y1 = source[1]
+
+    t = buildings[target]
     x2 = t['centroid'][0]
-    y1 = s['centroid'][1]
     y2 = t['centroid'][1]
 
     base = abs(x1-x2)
@@ -1477,6 +1505,8 @@ def main():
     # print 'Graph', graph
     dijkstra(graph,'0','22')
     print 'Paths', paths
+
+    generate_paths()
 
     # Example: [[22, 19, 12, 8, 4, 0]] len: 6
     for path in paths:
