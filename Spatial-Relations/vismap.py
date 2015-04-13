@@ -606,12 +606,9 @@ def unpack(tup):
     elif len(tup) is 5:
         return tup[0],tup[1],tup[2],tup[3],tup[4]
 
-def describe_shape(building):
-    """Describe shape based on corner and midpoint counts"""
+def count_points(building,xywh):
 
-    descriptions = []
-
-    x,y,w,h = unpack(building['xywh'])
+    x,y,w,h = unpack(xywh)
 
     # Tolerance based on ratio of min(w,h) as building sizes vary
     tolerance = min(w,h)/10
@@ -662,6 +659,16 @@ def describe_shape(building):
     corners_count = corners_filled.count(1)
     midpoints_count = midpoints_filled.count(1)
 
+    return corners_count, midpoints_count, (x,y,w,h)
+
+def describe_shape(building):
+    """Describe shape based on corner and midpoint counts"""
+
+    descriptions = []
+
+    xywh = building['xywh']
+    corners_count, midpoints_count, xywh2 = count_points(building,xywh)
+
     # print building['number'], building['name']
     # print ' Tolerance', tolerance
     # print '', corners_filled, 'Corners Count', corners_count
@@ -671,6 +678,7 @@ def describe_shape(building):
     # Decided not to use absolute value as differnce is relative
     # Also check that building fills out most of the MBR
     # Ruling out Journalism & Furnald, and Chandler & Havemeyer
+    x,y,w,h = unpack(xywh)
     if (abs(h-w) <= max(h,w)/5) and (building['extent'] > 0.7):
         is_square = True
     else:
@@ -698,7 +706,11 @@ def describe_shape(building):
         if (is_square):
             descriptions.append('squarish cross-shaped')
         else:
-            descriptions.append('cross-shaped')
+            cc, mc, xywh2 = count_points(building,xywh2)
+            if (cc%2 == 1): # Not symmetrical
+                descriptions.append('bell-shaped')
+            else:
+                descriptions.append('cross-shaped')
     elif (corners_count == 4 and midpoints_count == 2):
         descriptions.append('I-shaped')
     elif (corners_count == 4 and midpoints_count == 3):
