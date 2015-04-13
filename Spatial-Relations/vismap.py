@@ -53,18 +53,20 @@ def click_event(event,x,y,flags,param):
         drawing = True
         ix,iy = x,y
         ix, iy = intercept_click(ix,iy)
-        print 'Mouse clicked: ({},{})'.format(ix,iy)
+        # print 'Mouse clicked: ({},{})'.format(ix,iy)
         clicks.append((ix,iy))
 
         if mode == True:
             # Function to test ALL clouds for largest/smallest
             # test_clouds()
-            print 'Click'
-        else:
             idx = create_building(ix,iy)
             change_color() # and increment click count
             # Generate cloud of all similar pixels
             pixels = pixel_cloud(ix,iy)
+
+        else:
+            print 'click'
+
 
     # elif event == cv2.EVENT_MOUSEMOVE:
     #     if drawing == True:
@@ -91,12 +93,13 @@ def click_event(event,x,y,flags,param):
 
 def intercept_click(ix,iy):
     """Helper function that intercepts click values and changes to desired test"""
-    if click_count%2 == 0: # Target, smallest
-        ix = 50
-        iy = 430
-    else: # Source, largest
-        ix = 70
-        iy = 210
+    if click_count%2 == 0: # Target
+        ix,iy = 50,430 # Smallest
+        # ix,iy = 90, 400 # New Largest
+    else: # Source
+        ix,iy = 70,210 # Largest
+        # ix,iy = 130, 340 # Second Largest
+        # ix,iy = 10, 190 # Small
     return ix,iy
 
 def change_color():
@@ -175,9 +178,6 @@ def pixel_cloud(x,y):
     # Recursively generate ambiguity cloud based on pruned relationships and sorted indices
     flood_fill(x,y,relationships,sorted_indices)
 
-    cloud_size = len(cloud) * pix
-    print 'Size of cloud:', cloud_size, '(recursive calls: %d)' %recursive_calls
-
     # Color in the cloud
     for xy in cloud:
         col = xy[0]
@@ -188,6 +188,10 @@ def pixel_cloud(x,y):
 
     description = ts_description(x,y,relationships,sorted_indices)
     print description
+
+    cloud_size = len(cloud) * pix
+    print '     Size of cloud:', cloud_size, '(recursive calls: %d)\n' %recursive_calls
+
     return cloud_size
 
 def reduce_by_nearness(relationships):
@@ -218,9 +222,9 @@ def reduce_by_nearness(relationships):
             relationships[idx][:5] = [False,False,False,False,False]
         # Prune the list of indices to contain only the limit
         sorted_indices = sorted_indices[:limit]
-    print 'Sorted distances:', sorted_distances
+    # print 'Sorted distances:', sorted_distances
     # print 'Distances:', distances_to
-    print 'Sorted indices:', sorted_indices
+    # print 'Sorted indices:', sorted_indices
     # print 'New relationships:', relationships
     return relationships, sorted_indices
 
@@ -236,7 +240,7 @@ def what_description(idx):
     return what
 
 def ts_description(x, y, relationships, sorted_indices):
-    coordinates = '(%d,%d)' %(x,y)
+    coordinates = '     Click (%d,%d)' %(x,y)
     if click_count%2 == 1:
         print 'Target: ' #+ coordinates
         # description = 'Then go to the building that is '
@@ -566,39 +570,20 @@ def find_extrema():
         bldg1 = buildings[idx]
         description = bldg1['description']
         for characteristic in description:
+            print characteristic
             count = 0
-            if characteristic == 'almost rectangular' or 'southernmost':
-                break
+            # Add to counting dictionary
+            characteristics = counting_dict(characteristics, characteristic)
             for jdx in xrange(num_buildings):
                 bldg2 = buildings[jdx]
                 if (idx != jdx) and (characteristic in tuple(bldg2['description'])):
                     count += 1
-                    # print 'Found ', characteristic, 'from', bldg1['name'], 'in', bldg2['name']
-                    break
-            if count is 0:
+            if count is 0 and characteristic != 'almost rectangular' and characteristic != 'southernmost':
                 'Found extrema!', characteristic
                 extrema = [characteristic]
                 bldg1['description'] = extrema
                 buildings[idx] = bldg1
-                break
-    # TODO: test this!
-    # for idx in xrange(num_buildings):
-    #     bldg1 = buildings[idx]
-    #     description = bldg1['description']
-    #     for characteristic in description:
-    #         for jdx in xrange(num_buildings):
-    #             bldg2 = buildings[jdx]
-    #             if characteristic in tuple(bldg2['description'])):
-    #                 for characteristic in description:
-    #                     characteristics = counting_dict(characteristics, characteristic)
-    #                 # print 'Found ', characteristic, 'from', bldg1['name'], 'in', bldg2['name']
-    #         if characteristics[characteristic] is 1 and characteristic != 'almost rectangular' or 'southernmost':
-    #             # 'Found extrema!', characteristic
-    #             extrema = [characteristic]
-    #             bldg1['description'] = extrema
-    #             buildings[idx] = bldg1
-    # print characteristics
-    # return characteristics
+    return characteristics
 
 def find_monument():
     global monument, buildings
@@ -684,7 +669,7 @@ def unpack(tup):
     elif len(tup) is 5:
         return tup[0],tup[1],tup[2],tup[3],tup[4]
 
-def count_points(building,xywh):
+def count_points(building,xywh,draw_points):
     x,y,w,h = unpack(xywh)
 
     # Tolerance based on ratio of min(w,h) as building sizes vary
@@ -718,18 +703,22 @@ def count_points(building,xywh):
     for corner in corners:
         if map_labeled[tuple(reversed(corner))] == building['number']:
             corners_filled.append(1)
-            cv2.circle(map_campus, corner, 1, (255,255,0), -1)
+            if draw_points:
+                cv2.circle(map_campus, corner, 1, (255,255,0), -1)
         else:
             corners_filled.append(0)
-            cv2.circle(map_campus, corner, 1, (0,0,255), -1)
+            if draw_points:
+                cv2.circle(map_campus, corner, 1, (0,0,255), -1)
 
     for midpoint in midpoints:
         if map_labeled[tuple(reversed(midpoint))] == building['number']:
             midpoints_filled.append(1)
-            cv2.circle(map_campus, midpoint, 1, (0,255,0), -1)
+            if draw_points:
+                cv2.circle(map_campus, midpoint, 1, (0,255,0), -1)
         else:
             midpoints_filled.append(0)
-            cv2.circle(map_campus, midpoint, 1, (0,0,255), -1)
+            if draw_points:
+                cv2.circle(map_campus, midpoint, 1, (0,0,255), -1)
 
     # Count the number of corners and midpoints for each building
     # Not necessary to consider order at this point
@@ -738,13 +727,13 @@ def count_points(building,xywh):
 
     return corners_count, midpoints_count, (x,y,w,h)
 
-def describe_shape(building):
+def describe_shape(building,draw_points=False):
     """Describe shape based on corner and midpoint counts"""
 
     descriptions = []
 
     xywh = building['xywh']
-    corners_count, midpoints_count, xywh2 = count_points(building,xywh)
+    corners_count, midpoints_count, xywh2 = count_points(building,xywh,draw_points)
 
     # print building['number'], building['name']
     # print ' Tolerance', tolerance
@@ -783,7 +772,7 @@ def describe_shape(building):
         if (is_square):
             descriptions.append('squarish cross-shaped')
         else:
-            cc, mc, xywh2 = count_points(building,xywh2)
+            cc, mc, xywh2 = count_points(building,xywh2,draw_points)
             if (cc%2 == 1): # Not symmetrical
                 descriptions.append('bell-shaped')
             else:
@@ -1252,33 +1241,6 @@ def is_near(s,t,draw=False):
             return True
     return False
 
-# def xy_near(s,x,y):
-#     """Variant of is_near that takes in xy instead of target building"""
-#     shift = 20
-#     s_points = get_near_points(s,shift)
-#     t_points 
-#     s1,s2,s3,s4,s0 = unpack(s_points)
-#     pt = (x,y)
-#     if is_in_triangle(pt,s1,s2,s3) or is_in_triangle(pt,s3,s4,s1):
-#         return True
-#     return False
-
-# def xy_near_points(building,shift):
-#     if 'near_points' not in building: # or building['number'] > 27:
-#         # Extract four corners: nw,ne,se,sw
-#         x1,y1,w1,h1 = shift_corners(building,shift)
-#         p1,p2,p3,p4 = extract_corners(x1,y1,w1,h1)
-#         p0 = building['centroid']
-#         points = (p1,p2,p3,p4,p0)
-#         # draw_rectangle(p1,p2,p3,p4)
-#         # Add new points to source
-#         building['near_points'] = points
-#         idx = building['number'] - 1
-#         buildings[idx] = building
-#     else:
-#         points = building['near_points']
-#     return points
-
 def transitive_reduce(n_table, s_table, e_table, w_table, near_table):
     """Output should use building names rather than numbers"""
     for t in range(0, num_buildings):
@@ -1440,9 +1402,9 @@ def main():
         if k == ord('m'):
             mode = not mode
             if mode:
-                modeval = 'path generation'
+                modeval = 'Cloud Generation'
             else:
-                modeval = 'cloud generation'
+                modeval = 'Path Generation'
             print 'Changing mode to', modeval,'(you pressed m)...\n'
         if k == 27:
             break
