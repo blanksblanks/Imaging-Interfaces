@@ -57,11 +57,13 @@ def click_event(event,x,y,flags,param):
 
         if mode == True:
             # Function to test ALL clouds for largest/smallest
-            test_clouds()
+            print 'Click!'
         else:
             # Generate largest cloud
             # x = 126
             # y = 480
+            x = 90
+            y = 396
             idx = create_building(ix,iy)
 
             # alternate colors based on clicks
@@ -98,6 +100,8 @@ def click_event(event,x,y,flags,param):
 # ============================================================
 
 def test_clouds():
+    """Check clouds of every other 6 pixels in the map
+    Returns the xy coordinates sorted by cloud size"""
     global click_count
     clouds = []
     for x in xrange(MAP_W):
@@ -129,8 +133,14 @@ def pixel_cloud(x,y):
     relationships = []
     recursive_calls = 0
     called = {}
+
+    # To copy numpy arrays:
+    # a = np.zeros((27,27),bool)
+    # b = np.zeros((28,28),bool)
+    # b[:-1,:-1] = a
+
     # for num in xrange(0, num_buildings-1-click_count):
-    for num in xrange(0, num_buildings-1):
+    for num in xrange(num_buildings-1):
         s = buildings[num]
         t = buildings[-1] # the newly added building
         # Note these methods require xywh, centroid, number
@@ -139,9 +149,9 @@ def pixel_cloud(x,y):
         relationships.append([is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t),near,num,idx])
         # relationships.append([is_north(s,t), is_east(s,t), is_near(s,t),idx])
 
-    # print "Relationships", relationships
+    print "Relationships:", relationships
 
-    flood_fill(x,y,relationships)
+    # flood_fill(x,y,relationships)
 
     cloud_size = len(cloud) * pix
     print "Size of cloud:", cloud_size, "(recursive calls: %d)" %recursive_calls
@@ -154,77 +164,69 @@ def pixel_cloud(x,y):
         # Draw filled circle with radius of 5
         cv2.circle(map_campus,(col,row),pix/2,color,-1)
 
-   # transitive reduction for north and east
-    # for i in range(0, num_buildings):
-    #     ibuilding = building[i]
-    #     if relationships[i][0]: #north of this building
-    #         for k in range(0, num_buildings):
-    #             kbuilding = building[k]
-    #             if is_north(kbuilding,ibuilding):
-    #                 relationships[k][0] = False
-    #     if relationships[i][1]: #east of this building
-    #         for k in range(0, num_buildings):
-    #             kbuilding = building[k]
-    #             if is_east(kbuilding,ibuilding):
-    #                 relationships[k][1] = False
-    #     if relationships[i][2]: #near building reduce
-    #         for k in range(0, num_buildings):
-    #             kbuilding = building[k]
-    #             if k != i and is_near(kbuilding,ibuilding) and is_near(ibuilding,kbuilding) and relationships[k][2]:
-    #                 if ibuilding['area'] > kbuilding['area']:
-    #                     relationships[i][2] = False
-    #                 else:
-    #                     relationships[k][2] = False
-    # for i in range(0, num_buildings):
-    #     if relationships[i][2]:         # if it's not nearby it's not helpful
-    #         for k in range(0, num_buildings):
-    #             if is_near(i,k) == False:
-    #                 relationships[k] = False
+    relationships, sorted_indices = reduce_by_nearness(relationships)
 
-    # for i in xrange(0, num_buildings-1):
-    #     print 'i', i
-    #     ibuilding = buildings[i]
-    #     if relationships[i][0]: #north of this building
-    #         for k in range(0, num_buildings-1):
-    #             if is_north(k,i):
-    #                 relationships[k][0] = False
-    #     if relationships[i][1]: #east of this building
-    #         for k in range(0, num_buildings-1):
-    #             if is_east(k,i):
-    #                 relationships[k][1] = False
-    #     if relationships[i][2]: #near building reduce
-    #         for k in range(0, num_buildings-1):
-    #             kbuilding = buildings[k]
-    #             if k != i and is_near(k,i) and is_near(i,k) and relationships[k][2]:
-    #                 if ibuilding['area'] > kbuilding['area']:
-    #                     relationships[i][2] = False
-    #                 else:
-    #                     relationships[k][2] = False
-    for i in range(0, num_buildings-1):
+    description = ts_description(x,y,relationships,sorted_indices)
+    print description
+    return cloud_size
+
+def reduce_by_nearness(relationships):
+    distances_to = {}
+    for i in xrange(num_buildings-1):
         # Only keep near relationships
         if relationships[i][4] == False:
-            # for k in range(0, num_buildings):
-            #     if is_near(i,k) == False and is_near(k,i) == False:
+            # Change all previous results to False
             relationships[i][:4] = [False,False,False,False,False]
+        else:
+        # Of the remaining 'near' relationships, sort by distance
+            s = relationships[i][5]
+            t = -1 # Last added building to list of buildings
+            dist = get_euclidean_distance(s,t)
+            distances_to[str(s)] = dist
 
-
+    # Keep relationships only with three closest structures
+    sorted_distances = sorted(distances_to.items(), key=lambda k:k[1])
+    sorted_indices = [int(tup[0]) for tup in sorted_distances]
+    if len(sorted_indices) > 3:
+        for n in xrange(3,len(sorted_indices)):
+            idx = sorted_indices[n]
+            relationships[idx][:4] = [False,False,False,False,False]
+        # Prune the list of indices
+        sorted_indices = sorted_indices[:3]
+    # print 'Sorted distances:', sorted_distances
+    # print 'Distances:', distances_to
+    # print 'Sorted indices:', sorted_indices
     # print 'New relationships:', relationships
+    return relationships, sorted_indices
 
+def what_description(idx):
+    global buildings
+    what = 'the '
+    descr = buildings[idx]['description']
+    for i in xrange(len(descr)):
+        if i < len(descr)-1:
+            what += descr[i] + ', '
+        else:
+            what += descr[i] + ' structure'
+    return what
 
+def ts_description(x,y,relationships,sorted_indices):
     coordinates = '(%d,%d)' %(x,y)
-    # if click_count%2 == 1:
-    #     print 'Target: ' #+ coordinates
-    #     # description = 'Then go to the building that is '
-    # else:
-    #     print 'Source: ' #+ coordinates
-    #     # description = 'Go to the nearby building that is '
+    if click_count%2 == 1:
+        print 'Target: ' #+ coordinates
+        # description = 'Then go to the building that is '
+    else:
+        print 'Source: ' #+ coordinates
+        # description = 'Go to the nearby building that is '
 
     if (relationships[0][-1] == 0):
         description = coordinates + ' is '
     else:
-        description = coordinates + ' is inside a building, '
+        description = coordinates + ' is inside and to the '
 
-    for idx in range(0, num_buildings-1):
+    # for idx in range(0, num_buildings-1):
+    rel_count = 0
+    for idx in sorted_indices:
         count = 0
         if relationships[idx][0]:
             description += 'north of '
@@ -254,20 +256,11 @@ def pixel_cloud(x,y):
         if count != 0:
             description += what_description(idx)
             description += ' (%s), ' %buildings[idx]['name']
+            rel_count += 1
+            if rel_count == len(sorted_indices)-1:
+                description += 'and '
     description = description[:-2] + '.'
-    # print description
-
-    return cloud_size
-
-def what_description(idx):
-    what = 'the '
-    descr = buildings[idx]['description']
-    for i in xrange(len(descr)):
-        if i < len(descr)-1:
-            what += descr[i] + ', '
-        else:
-            what += descr[i] + ' structure'
-    return what
+    return description
 
 def flood_fill(x,y,rel_table):
     """Recursive algorithm that starts at x and y and changes any
@@ -760,7 +753,7 @@ def describe_shape(building):
     elif (corners_count == 4 and midpoints_count == 2):
         descriptions.append('I-shaped')
     elif (corners_count == 4 and midpoints_count == 3):
-        descriptions.append('C-shaped')
+        descriptions.append('U-shaped')
     elif (corners_count == 3 and midpoints_count == 2):
         descriptions.append('L-shaped')
     elif (corners_count == 2 and midpoints_count == 4):
@@ -1332,6 +1325,9 @@ def get_euclidean_distance(source,target):
     # Get buildings from indices
     s = buildings[source]
     t = buildings[target]
+
+    # Take min(w,h) of source building into account
+    # margin = (min(s['xywh'][2],s['xywh'][3])/2)
 
     x1 = s['centroid'][0]
     x2 = t['centroid'][0]
