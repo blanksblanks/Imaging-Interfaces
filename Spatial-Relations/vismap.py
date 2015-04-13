@@ -278,7 +278,8 @@ def ts_description(x, y, relationships, sorted_indices):
         print 'Source: ' #+ coordinates
         # description = 'Go to the nearby building that is '
 
-    if (relationships[0][-1] == 0):
+    # Check if click point is outside or inside
+    if (relationships[0][-1] == -1):
         description = coordinates + ' is '
     else:
         description = coordinates + ' is inside and to the '
@@ -297,16 +298,16 @@ def ts_description(x, y, relationships, sorted_indices):
             count += 1
         if relationships[idx][2]:
             if count == 0:
-                description += 'east of '
                 count += 1
             else:
-                description += 'and east of '
+                description = description[:-4]
+            description += 'east of '
         if relationships[idx][3]:
             if count == 0:
-                description += 'west of '
                 count += 1
             else:
-                description += 'and west of '
+                description = description[:-4]
+            description += 'and west of '
         # Implied nearness
         # if relationships[idx][4]:
         #     if count == 0:
