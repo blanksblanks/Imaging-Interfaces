@@ -488,11 +488,11 @@ def find_ambiguity():
             bldg2 = buildings[jdx]
             if idx != jdx and bldg1['description'] == bldg2['description']:
                 if is_north(bldg1,bldg2):
-                    bldg2['description'].insert(0,'northern')
-                    bldg1['description'].insert(0,'southern')
+                    bldg2['description'].insert(0,'more northern')
+                    bldg1['description'].insert(0,'more southern')
                 elif is_south(bldg1,bldg2):
-                    bldg1['description'].insert(0,'northern')
-                    bldg2['description'].insert(0,'southern')
+                    bldg1['description'].insert(0,'more northern')
+                    bldg2['description'].insert(0,'more southern')
                 buildings[idx] = bldg1
                 buildings[jdx] = bldg2
                 # print 'Ambiguity between', bldg1['name'], 'and', bldg2['name']
