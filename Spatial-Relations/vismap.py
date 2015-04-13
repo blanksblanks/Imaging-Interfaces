@@ -465,7 +465,7 @@ def analyze_buildings(names):
         else:
             description = building['description']
         if building['area'] is min_area: # replace with extrema
-            description.append('tiniest')
+            description.append('smallest')
         else:
             description.append(size)
         description.extend(shape)
@@ -1131,7 +1131,7 @@ def draw_triangle(p1,p2,p3):
 
 def get_near_points(building):
     if 'near_points' not in building:
-        shift = 20 # Empirically chosen
+        shift = 30 # Empirically chosen
         # Extract four corners: nw,ne,se,sw
         x1,y1,w1,h1 = shift_corners(building,shift)
         p1,p2,p3,p4 = extract_corners(x1,y1,w1,h1)
