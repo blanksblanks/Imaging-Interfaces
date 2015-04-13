@@ -58,8 +58,8 @@ paths = []
 # S6G6: Journalism -^ Uris
 # S7G7: Avery ^- Shapiro
 # S8G8: Lion's Court ^- Lowe
-S_LIST = [(8,321)]
-G_LIST = [(214,49)]
+S_LIST = [(8,320),(35,4),]
+G_LIST = [(205,51),(137,291),(257,374),]
 
 
 # ============================================================
@@ -182,11 +182,11 @@ def pixel_cloud(x,y):
     # b[:-1,:-1] = a
 
     # for num in xrange(0, num_buildings-1-click_count):
-    for num in xrange(num_buildings-1):
+    for num in xrange(num_buildings):
         s = buildings[num]
         t = buildings[-1] # the newly added building
         # Note these methods require xywh, centroid, number
-        idx = int(map_labeled[y][x])
+        idx = int(map_labeled[y][x]) - 1
         # near = xy_near(s,x,y)
         # near = is_near(s,t) # Keep smaller (1 pixel) building's relationship
         near = is_near(s,t) or is_near(t,s)
@@ -222,7 +222,7 @@ def reduce_by_nearness(relationships):
     # Users seem confused by more than 3 descriptions
     limit = 3
     distances_to = {}
-    for i in xrange(num_buildings-1):
+    for i in xrange(num_buildings):
         # Only keep near relationships
         if relationships[i][4] == False:
             # Change all values to False (ignore)
@@ -239,8 +239,8 @@ def reduce_by_nearness(relationships):
 
     # Special case: if click is inside building, its color value - 1
     # (its building index) should be at start of list
-    click_idx = relationships[0][-1] - 1
-    if click_idx == 0: # Outside
+    click_idx = relationships[0][-1]
+    if click_idx == -1: # Outside
         sorted_indices = [int(tup[0]) for tup in sorted_distances]
     else: # Inside
         sorted_indices = [int(tup[0]) for tup in sorted_distances if int(tup[0]) != click_idx]
@@ -283,6 +283,8 @@ def ts_description(x, y, relationships, sorted_indices):
     else:
         description = coordinates + ' is inside and to the '
 
+    # print 'Sorted indices:', sorted_indices
+    # print 'Relationships:', relationships
     # for idx in range(0, num_buildings-1):
     rel_count = 0
     for idx in sorted_indices:
@@ -340,7 +342,7 @@ def flood_fill(x, y, rel_table, indices):
 
     rel = []
     # for num in range(0, num_buildings-1-click_count):
-    for num in xrange(0, num_buildings-1):
+    for num in xrange(num_buildings):
         s = buildings[num]
         t = buildings[-1]
         t['centroid'] = (x,y) # change centroid to new x,y
@@ -348,7 +350,7 @@ def flood_fill(x, y, rel_table, indices):
         if 'near_points' in t:
             del t['near_points']
         buildings[t['number']-1] = t
-        idx = int(map_labeled[y][x])
+        idx = int(map_labeled[y][x]) - 1
         # Only check relevant relations
         if num in tuple(indices):
             # near = xy_near(s,x,y)
