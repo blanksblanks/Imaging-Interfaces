@@ -35,6 +35,7 @@ MAP_W = len(map_binary[0])
 
 buildings = []
 num_buildings = 0
+monument = {}
 
 # ============================================================
 # User Interface
@@ -49,7 +50,7 @@ def draw_circle(event,x,y,flags,param):
         ix,iy = x,y
         idx = create_building(ix,iy)
         print 'Mouse clicked: ({},{})'.format(ix,iy)
-        print buildings[idx-1]['name']
+        # print buildings[idx-1]['name']
 
         # alternate colors based on clicks
         if click_count >= len(colors)-1: # reset
@@ -108,15 +109,16 @@ def pixel_cloud(x,y):
         t = buildings[-1] # the newly added building
         # Note these methods require xywh, centroid, number
         idx = int(map_labeled[y][x])
-        # relationships.append((is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t), is_near(s,t),idx))
-        relationships.append((is_north(s,t), is_east(s,t), is_near(s,t),idx))
+        near = is_near(s,t) or is_near(t,s)
+        relationships.append([is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t),near,num,idx])
+        # relationships.append([is_north(s,t), is_east(s,t), is_near(s,t),idx])
 
-    print "Relationships", relationships
+    # print "Relationships", relationships
 
     flood_fill(x,y,relationships)
 
     cloud_size = len(cloud) * pix
-    print "Size of cloud:", cloud_size, "(recursive calls:", recursive_calls, ")"
+    print "Size of cloud:", cloud_size, "(recursive calls: %d)" %recursive_calls
 
     # Color in the cloud
     for xy in cloud:
@@ -126,18 +128,121 @@ def pixel_cloud(x,y):
         # Draw filled circle with radius of 5
         cv2.circle(map_campus,(col,row),pix/2,color,-1)
 
-    # relationships = np.zeros((num_buildings,3),bool)
+   # transitive reduction for north and east
+    # for i in range(0, num_buildings):
+    #     ibuilding = building[i]
+    #     if relationships[i][0]: #north of this building
+    #         for k in range(0, num_buildings):
+    #             kbuilding = building[k]
+    #             if is_north(kbuilding,ibuilding):
+    #                 relationships[k][0] = False
+    #     if relationships[i][1]: #east of this building
+    #         for k in range(0, num_buildings):
+    #             kbuilding = building[k]
+    #             if is_east(kbuilding,ibuilding):
+    #                 relationships[k][1] = False
+    #     if relationships[i][2]: #near building reduce
+    #         for k in range(0, num_buildings):
+    #             kbuilding = building[k]
+    #             if k != i and is_near(kbuilding,ibuilding) and is_near(ibuilding,kbuilding) and relationships[k][2]:
+    #                 if ibuilding['area'] > kbuilding['area']:
+    #                     relationships[i][2] = False
+    #                 else:
+    #                     relationships[k][2] = False
+    # for i in range(0, num_buildings):
+    #     if relationships[i][2]:         # if it's not nearby it's not helpful
+    #         for k in range(0, num_buildings):
+    #             if is_near(i,k) == False:
+    #                 relationships[k] = False
 
-# def check_neighbors(i,j):
-#     """Check all 8 neighbors around this pixel"""
-#     for x in xrange(i-1,i+2):
-#         for y in xrange(j-1,j+2):
-#             if not (x is i and y is j) and index_valid(x,y):
+    # for i in xrange(0, num_buildings-1):
+    #     print 'i', i
+    #     ibuilding = buildings[i]
+    #     if relationships[i][0]: #north of this building
+    #         for k in range(0, num_buildings-1):
+    #             if is_north(k,i):
+    #                 relationships[k][0] = False
+    #     if relationships[i][1]: #east of this building
+    #         for k in range(0, num_buildings-1):
+    #             if is_east(k,i):
+    #                 relationships[k][1] = False
+    #     if relationships[i][2]: #near building reduce
+    #         for k in range(0, num_buildings-1):
+    #             kbuilding = buildings[k]
+    #             if k != i and is_near(k,i) and is_near(i,k) and relationships[k][2]:
+    #                 if ibuilding['area'] > kbuilding['area']:
+    #                     relationships[i][2] = False
+    #                 else:
+    #                     relationships[k][2] = False
+    for i in range(0, num_buildings-1):
+        # Only keep near relationships
+        if relationships[i][4] == False:
+            # for k in range(0, num_buildings):
+            #     if is_near(i,k) == False and is_near(k,i) == False:
+            relationships[i][:4] = [False,False,False,False,False]
 
-#                 cloud.append(row, col)neighbors.append(gray[row][col])
-#     neighbor_sum = reduce(lambda x, y: x+y, neighbors)
-#     n = len(neighbors)
-#     laplacian[i][j] = gray[i][j]*n - neighbor_sum
+
+    # print 'New relationships:', relationships
+
+    # global names
+    # # describe the point
+
+    coordinates = '(%d,%d)' %(x,y)
+    if click_count%2 == 1:
+        print 'Target: ' #+ coordinates
+        # description = 'Then go to the building that is '
+    else:
+        print 'Source: ' #+ coordinates
+        # description = 'Go to the nearby building that is '
+
+    if (relationships[0][-1] == 0):
+        description = coordinates + ' is '
+    else:
+        description = coordinates + ' is inside a building, '
+
+    for idx in range(0, num_buildings-1):
+        count = 0
+        if relationships[idx][0]:
+            description += 'north of '
+            count += 1
+        if relationships[idx][1]:
+            description += 'south of '
+            count += 1
+        if relationships[idx][2]:
+            if count == 0:
+                description += 'east of '
+                count += 1
+            else:
+                description += 'and east of '
+        if relationships[idx][3]:
+            if count == 0:
+                description += 'west of '
+                count += 1
+            else:
+                description += 'and west of '
+        # Implied nearness
+        # if relationships[idx][4]:
+        #     if count == 0:
+        #         descr += "near "
+        #         count += 1
+        #     else:
+        #         desc += "and near "
+        if count != 0:
+            description += what_description(idx)
+            description += ' (%s), ' %buildings[idx]['name']
+    description = description[:-2] + '.'
+    print description
+
+def what_description(idx):
+    what = 'the '
+    descr = buildings[idx]['description']
+    for i in xrange(len(descr)):
+        if i < len(descr)-1:
+            what += descr[i] + ', '
+        else:
+            what += descr[i] + ' structure'
+    return what
+
 
 def flood_fill(x,y,rel_table):
     """Recursive algorithm that starts at x and y and changes any
@@ -160,8 +265,8 @@ def flood_fill(x,y,rel_table):
         t['centroid'] = (x,y) # change centroid to new x,y
         idx = int(map_labeled[y][x])
         # Note these methods require xywh, centroid, number
-        rel.append((is_north(s,t),is_east(s,t),is_near(s,t),idx))
-        # rel.append((is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t), is_near(s,t),idx))
+        # rel.append([is_north(s,t),is_east(s,t),is_near(s,t),idx])
+        rel.append([is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t), is_near(s,t),idx])
 
     # print rel
 
@@ -346,20 +451,38 @@ def analyze_buildings(names):
         # building['cnt'] = cnt
         buildings[(idx-1)] = building
 
-    max_area, min_area = analyze_areas(buildings) # add True arg to print results
+    max_area, min_area = analyze_areas(buildings,print_results=True) # add True arg to print results
     # find_extrema(buildings)
+
+    find_monument()
 
     for building in buildings:
         location = describe_location(building)
         size = describe_size(building, max_area)
-        description = describe_shape(building)
-        description.insert(0,size)
+        shape = describe_shape(building)
+        if 'description' not in building:
+            description = []
+        else:
+            description = building['description']
+        if building['area'] is min_area: # replace with extrema
+            description.append('tiniest')
+        else:
+            description.append(size)
+        description.extend(shape)
         description.extend(location)
         building['description'] = description
 
     # multiple = describe_multiplicity
     # analyze_extents(buildings)
     # analyze_shapes(buildings)
+
+def find_monument():
+    global monument, buildings
+    for idx in xrange(num_buildings):
+        if buildings[idx]['xywh'][2] > MAP_W - 10:
+            monument = buildings[idx]
+            buildings[idx]['description'] = ['longest']
+            return
 
 def analyze_extents():
     """Sort buildings by extent and determine cutoff for rectangles"""
@@ -386,12 +509,14 @@ def analyze_areas(buildings, print_results=False):
     # Print results to analyze cutoffs for size categories
     if (print_results):
         print 'Analyzing building areas...'
-        ratios = [round(areas[i]/max_area,3) for i in range(num_buildings)]
+        ratios = [round(float(areas[i])/max_area,3) for i in range(num_buildings)]
         ratio_diffs = [round((ratios[i+1]-ratios[i]),3) for i in range(num_buildings-1)]
         ratio_diffs.insert(0,0)
         max_area_ratios = [round(max_area/areas[i],3) for i in range(num_buildings)]
 
-        print 'Max Area:', max_area, '\nAverage:', round(avg_area, 3)
+        print 'Max Area:', max_area
+        print 'Average:', avg_area
+        print 'Min Area:', min_area
         print 'Area\tRatio r\tDiff r\tMax r\tBuilding'
         for i in xrange(num_buildings):
             idx = indices[i]
@@ -417,12 +542,12 @@ def analyze_shapes(buildings):
         print round(sim[0],4), '\t', buildings[bldg1]['name'], '&', buildings[bldg2]['name']
 
 def describe_size(building, max_area):
-    ratio = building['area']/max_area
+    ratio = float(building['area'])/max_area
     if ratio > 0.7: # cutoff at College Walk
         return 'colossal'
     elif ratio > 0.4: # cutoff at Journalism & Furnald
         return 'large'
-    elif ratio > 0.15: # cutoff at Philosophy
+    elif ratio > 0.16: # cutoff at Philosophy
         return 'middling'
     elif ratio > 0.1: # cutoff Earl Hall
         return 'small'
@@ -550,22 +675,34 @@ def describe_shape(building):
     # print ' Description', descriptions
     return descriptions
 
+
 def describe_location(building):
-    # TODO: fix to buildings[21]
-    college_walk = (137,322)
-    marker = college_walk[1]
+    if building['number'] is monument['number']:
+        return []
+
+    location = []
+    marker = monument['centroid'][1] # cy for College Walk
 
     h = building['mbr'][1][1] - building['mbr'][0][1]
     w = building['mbr'][1][0] - building['mbr'][0][0]
 
     # Reduce h/w shift so buildings are positioned properly
-    h = h * 0.7
-    w = w * 0.7
+    h = int(h * 0.7)
+    w = int(w * 0.7)
 
     cx = building['centroid'][0]
     cy = building['centroid'][1]
 
-    location = []
+    # Draw lines
+    # if building['number'] is 13:
+    #     cv2.line(map_campus,(0,marker/2),(MAP_W,marker/2),[0,255,0],2)
+    #     cv2.line(map_campus,(0,marker),(MAP_W,marker),[0,255,0],2)
+    #     cv2.line(map_campus,(0,h),(MAP_W,h),[0,255,0],2)
+    #     cv2.line(map_campus,(0,MAP_H-h),(MAP_W,MAP_H-h),[0,255,0],2)
+    #     cv2.line(map_campus,(int((MAP_W/2)-w),0),(int((MAP_W/2)-w),MAP_H),[0,255,0],2)
+    #     cv2.line(map_campus,(int((MAP_W/2)+w),0),(int((MAP_W/2)+w),MAP_H),[0,255,0],2)
+    #     cv2.line(map_campus,(w,0),(w,MAP_H),[0,255,0],2)
+    #     cv2.line(map_campus,(MAP_W-w,0),(MAP_W-w,MAP_H),[0,255,0],2)
 
     # Locate buildings on borders or central axis
     if (cx < w) and (cy < h):
@@ -576,29 +713,37 @@ def describe_location(building):
         location.append('southeast corner')
     elif (cx < w) and (cy > MAP_H-h):
         location.append('southwest corner')
-    elif (cx < w):
-        location.append('western border')
     elif (cy < h):
-        location.append('northern border')
-    elif (cx > MAP_W-w):
-        location.append('eastern border')
+        location.append('northernmost')
     elif (cy > MAP_H-h):
-        location.append('southern border')
-
+        location.append('southernmost')
     # For buildings not on north/south borders, locate whether on
     # upper/central/lower campus
-    if (cy > marker) and (cy < MAP_H-h):
+    elif (cy > marker) and (cy < MAP_H-h): # southernmost already weeded out
+        if (cx > MAP_W-w):
+            location.append('easternmost')
+        elif (cx < w):
+            location.append('westernmost')
         location.append('lower campus')
-    elif (cy < marker) and (cy > (MAP_H-marker)/2):
-        location.append('central campus')
-    elif (cy > h) and (cy < (MAP_H-marker)/2):
+    elif (cy > h) and (cy < marker/2):
+        if (cx > MAP_W-w):
+            location.append('easternmost')
+        elif (cx < w):
+            location.append('westernmost')
         location.append('upper campus')
+    elif (cy < marker) and (cy > marker/2) and (cx < MAP_W-w) and (cx > w): # central_axis(cx,w):
+        location.append('central campus')
 
     # For buildings not on east/west borders
-    if (cx > (MAP_W/2)-w) and (cx < (MAP_W/2)+w) and (cx > w) and (cx < MAP_W-w):
-        location.append('on central axis')
+    # if (cx > (MAP_W/2)-w) and (cx < (MAP_W/2)+w) and (cx > w) and (cx < MAP_W-w):
+    #     location.append('on central axis')
 
     return location
+
+def central_axis(cx,w):
+    if (cx > (MAP_W/2)-w) and (cx < (MAP_W/2)+w) and (cx > w) and (cx < MAP_W-w):
+        return True
+    return False
 
 def find_extrema(buildings):
     """Find extrema and return as list of tuple pairs of building index and extrema description"""
@@ -794,6 +939,12 @@ def is_west(s,t):
 def triangulate_FOV(s,t,x,y,slope,draw=False):
     """Create a triangle FOV with 3 points and
     check if t is within triangle"""
+
+    # Check if input is a building (if so, leave it)
+    # or an int (if so, change to a building)
+    if type(s) == int and type(t) == int:
+        s = buildings[s]
+        t = buildings[t]
 
     if y is 0:
         fov = 'north_fov'
@@ -995,10 +1146,14 @@ def get_near_points(building):
         points = building['near_points']
     return points
 
-def is_near(source,target,draw=False):
+def is_near(s,t,draw=False):
     """Near to S is T"""
-    s_points = get_near_points(source)
-    t_points = get_near_points(target)
+    if type(s) == int and type(t) == int:
+        s = buildings[s]
+        t = buildings[t]
+
+    s_points = get_near_points(s)
+    t_points = get_near_points(t)
 
     s1,s2,s3,s4,s0 = unpack(s_points)
     t1,t2,t3,t4,t0 = unpack(t_points)
@@ -1025,10 +1180,6 @@ def is_near(source,target,draw=False):
 
 # def transitive_reduce():
 #     """Output should use building names rather than numbers"""
-
-
-
-
 
 # ============================================================
 # Main Invocation
