@@ -20,7 +20,7 @@ cloud = {}
 called = {}
 recursive_calls = 0
 # Blocks of pixels to check in each direction
-pix = 6
+pix = 2
 
 drawing = False # true if mouse is pressed
 # mode = True # if True, draw rectangle. Press 'm' to toggle to curve
@@ -42,10 +42,18 @@ monument = {}
 # ============================================================
 
 # mouse callback function
-def draw_circle(event,x,y,flags,param):
+def click_event(event,x,y,flags,param):
     global ix,iy,drawing,mode,click_count,color
 
     if event == cv2.EVENT_LBUTTONDOWN:
+
+        # Function to test ALL clouds for largest/smallest
+        test_clouds()
+
+        # Generate largest cloud
+        # x = 126
+        # y = 480
+
         drawing = True
         ix,iy = x,y
         idx = create_building(ix,iy)
@@ -85,6 +93,18 @@ def draw_circle(event,x,y,flags,param):
 # Source and Target Description and User Interface
 # ============================================================
 
+def test_clouds():
+    global click_count
+    clouds = []
+    for x in xrange(MAP_W):
+        for y in xrange(MAP_H):
+            if (x%6 == 0) and (y%6 == 0):
+                click_count += 1
+                idx = create_building(x,y)
+                clouds.append((x,y,pixel_cloud(x,y)))
+    sorted_cloud = sorted(clouds, key=lambda k:-k[2])
+    print sorted_cloud
+
 def create_building(x,y):
     global num_buildings, buildings
     idx = int(map_labeled[y][x])
@@ -99,10 +119,12 @@ def create_building(x,y):
     return idx
 
 def pixel_cloud(x,y):
-    global color, cloud
+    global color, cloud, recursive_calls, called
     # Reset cloud every time this function is called
     cloud = {}
     relationships = []
+    recursive_calls = 0
+    called = {}
     # for num in xrange(0, num_buildings-1-click_count):
     for num in xrange(0, num_buildings-1):
         s = buildings[num]
@@ -184,16 +206,14 @@ def pixel_cloud(x,y):
 
     # print 'New relationships:', relationships
 
-    # global names
-    # # describe the point
 
     coordinates = '(%d,%d)' %(x,y)
-    if click_count%2 == 1:
-        print 'Target: ' #+ coordinates
-        # description = 'Then go to the building that is '
-    else:
-        print 'Source: ' #+ coordinates
-        # description = 'Go to the nearby building that is '
+    # if click_count%2 == 1:
+    #     print 'Target: ' #+ coordinates
+    #     # description = 'Then go to the building that is '
+    # else:
+    #     print 'Source: ' #+ coordinates
+    #     # description = 'Go to the nearby building that is '
 
     if (relationships[0][-1] == 0):
         description = coordinates + ' is '
@@ -231,7 +251,9 @@ def pixel_cloud(x,y):
             description += what_description(idx)
             description += ' (%s), ' %buildings[idx]['name']
     description = description[:-2] + '.'
-    print description
+    # print description
+
+    return cloud_size
 
 def what_description(idx):
     what = 'the '
@@ -497,9 +519,17 @@ def find_ambiguity():
                 buildings[jdx] = bldg2
                 # print 'Ambiguity between', bldg1['name'], 'and', bldg2['name']
 
+def counting_dict(dic,key):
+    if key in dic:
+        dic[key] += 1
+    else:
+        dic[key] = 1
+    return dic
+
 def find_extrema():
     """Find singularly defining characteristics and remove other details"""
     global buildings
+    characteristics = {}
     for idx in xrange(num_buildings):
         bldg1 = buildings[idx]
         description = bldg1['description']
@@ -519,8 +549,24 @@ def find_extrema():
                 bldg1['description'] = extrema
                 buildings[idx] = bldg1
                 break
-
-
+    # TODO: test this!
+    # for idx in xrange(num_buildings):
+    #     bldg1 = buildings[idx]
+    #     description = bldg1['description']
+    #     for characteristic in description:
+    #         for jdx in xrange(num_buildings):
+    #             bldg2 = buildings[jdx]
+    #             if characteristic in tuple(bldg2['description'])):
+    #                 for characteristic in description:
+    #                     characteristics = counting_dict(characteristics, characteristic)
+    #                 # print 'Found ', characteristic, 'from', bldg1['name'], 'in', bldg2['name']
+    #         if characteristics[characteristic] is 1 and characteristic != 'almost rectangular' or 'southernmost':
+    #             # 'Found extrema!', characteristic
+    #             extrema = [characteristic]
+    #             bldg1['description'] = extrema
+    #             buildings[idx] = bldg1
+    # print characteristics
+    # return characteristics
 
 def find_monument():
     global monument, buildings
@@ -864,48 +910,7 @@ def analyze_relations(buildings):
     count += print_table(near_table, num_buildings)
     print 'Total count:', count
 
-
-    # Transitive reduction
-    for t in range(0, num_buildings):
-        for s in range(0, num_buildings):
-            if n_table[s][t]:
-                for u in range(0, num_buildings):
-                    if n_table[t][u]:
-                        n_table[s][u] = False
-            if s_table[s][t]:
-                for u in range(0, num_buildings):
-                    if s_table[t][u]:
-                        s_table[s][u] = False
-            if w_table[s][t]:
-                for u in range(0, num_buildings):
-                    if w_table[t][u]:
-                        w_table[s][u] = False
-            if e_table[s][t]:
-                for u in range(0, num_buildings):
-                    if e_table[t][u]:
-                        e_table[s][u] = False
-
-    # If t is north of s we no longer need to say s is south of t
-    # Similarly, east west relationships can be inferred
-    for s in range(0, num_buildings):
-        for t in range(0, num_buildings):
-            if n_table[s][t] and s_table[t][s]:
-                s_table[t][s] = False
-            if e_table[s][t] and w_table[t][s]:
-                w_table[t][s] = False
-
-    # If relationship is reflexive, keep the smaller building's relationship
-    for s in xrange(0, num_buildings):
-        for t in xrange(0, num_buildings):
-            source = buildings[s]
-            target = buildings[t]
-            if near_table[s][t] and near_table[t][s]:
-                if source['area'] > target['area']:
-                    near_table[s][t] = False
-                else:
-                    near_table[t][s] = False
-            elif near_table[s][t] and not near_table[t][s]:
-                print 'Near to', source['name'], 'is', target['name'], 'but not other way around'
+    n_table, s_table, e_table, w_table, near_table = transitive_reduce(n_table, s_table, e_table, w_table, near_table)
 
     print 'After transitive reduction...'
     print 'North relationships:'
@@ -925,6 +930,8 @@ def analyze_relations(buildings):
     print_table_info(e_table, buildings, 'East')
     print_table_info(w_table, buildings, 'West')
     print_table_info(near_table, buildings, 'Near')
+
+    return n_table, s_table, e_table, w_table, near_table
 
 def print_table_info(table, buildings, direction):
     # num_buildings = len(buildings)
@@ -1068,8 +1075,7 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
         return True
 
     # Special case for campus-wide College Walk, add centroids
-    # TODO: change this after you do extrema
-    if (t['number'] == 21):
+    if (t['number'] == monument['number']):
         mid = t['centroid']
         p5 = (MAP_W/5,mid[1])
         p6 = (MAP_W*4/5,mid[1])
@@ -1090,8 +1096,7 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
         return True
 
     # Special case for campus-wide College Walk, add centroids
-    # TODO: change this after you do extrema
-    if (t['number'] == 21):
+    if (t['number'] == monument['number']):
         mid = t['centroid']
         p5 = (MAP_W/5,mid[1])
         p6 = (MAP_W*4/5,mid[1])
@@ -1234,8 +1239,56 @@ def is_near(s,t,draw=False):
             return True
     return False
 
-# def transitive_reduce():
-#     """Output should use building names rather than numbers"""
+def transitive_reduce(n_table, s_table, e_table, w_table, near_table):
+    """Output should use building names rather than numbers"""
+    for t in range(0, num_buildings):
+        for s in range(0, num_buildings):
+            if n_table[s][t]:
+                for u in range(0, num_buildings):
+                    if n_table[t][u]:
+                        n_table[s][u] = False
+            if s_table[s][t]:
+                for u in range(0, num_buildings):
+                    if s_table[t][u]:
+                        s_table[s][u] = False
+            if w_table[s][t]:
+                for u in range(0, num_buildings):
+                    if w_table[t][u]:
+                        w_table[s][u] = False
+            if e_table[s][t]:
+                for u in range(0, num_buildings):
+                    if e_table[t][u]:
+                        e_table[s][u] = False
+
+    # If t is north of s we no longer need to say s is south of t
+    # Similarly, east west relationships can be inferred
+    for s in range(0, num_buildings):
+        for t in range(0, num_buildings):
+            if n_table[s][t] and s_table[t][s]:
+                s_table[t][s] = False
+            if e_table[s][t] and w_table[t][s]:
+                w_table[t][s] = False
+
+    # If relationship is reflexive, keep the smaller building's relationship
+    for s in xrange(0, num_buildings):
+        for t in xrange(0, num_buildings):
+            source = buildings[s]
+            target = buildings[t]
+            if near_table[s][t] and near_table[t][s]:
+                if source['area'] > target['area']:
+                    near_table[s][t] = False
+                else:
+                    near_table[t][s] = False
+            elif near_table[s][t] and not near_table[t][s]:
+                print 'Near to', source['name'], 'is', target['name'], 'but not other way around'
+
+    return n_table, s_table, e_table, w_table, near_table
+
+
+# ============================================================
+# Final PArt
+# ============================================================
+
 
 # ============================================================
 # Main Invocation
@@ -1243,18 +1296,18 @@ def is_near(s,t,draw=False):
 
 def main():
 
-    # Analyze image
+    # Step 1. Generate 'what' for each building by analyzing image
+    # Note: images and buildings information are stored as global vars
     names = load_names('ass3-table.txt')
-    # buildings =
-    analyze_buildings(names)
+    analyze_buildings(names) # TODO: change to what?
     print_info(buildings)
 
-    # Generate lookup table for building relations
-    relations = analyze_relations(buildings)
+    # Step 2. Generate 'where' lookup table for building relations
+    n_table, s_table, e_table, w_table, near_table = analyze_relations(buildings)
     # analyze_relations_single(20, 'west', buildings)
 
     cv2.namedWindow('Columbia Campus Map')
-    cv2.setMouseCallback('Columbia Campus Map', draw_circle)
+    cv2.setMouseCallback('Columbia Campus Map', click_event)
     print "Showing image..."
 
     # print buildings
