@@ -52,27 +52,17 @@ def click_event(event,x,y,flags,param):
 
         drawing = True
         ix,iy = x,y
+        ix, iy = intercept_click(ix,iy)
         print 'Mouse clicked: ({},{})'.format(ix,iy)
         clicks.append((ix,iy))
 
         if mode == True:
             # Function to test ALL clouds for largest/smallest
-            print 'Click!'
+            # test_clouds()
+            print 'Click'
         else:
-            # Generate largest cloud
-            # x = 126
-            # y = 480
-            x = 90
-            y = 396
             idx = create_building(ix,iy)
-
-            # alternate colors based on clicks
-            if click_count >= len(colors)-1: # reset
-                click_count = 0
-            else:
-                click_count += 1
-            color = colors[click_count]
-
+            change_color() # and increment click count
             # Generate cloud of all similar pixels
             pixels = pixel_cloud(ix,iy)
 
@@ -86,7 +76,7 @@ def click_event(event,x,y,flags,param):
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
-        cv2.circle(map_campus,(ix,iy),pix/2,color,-1)
+        cv2.circle(map_campus,(ix,iy),pix,color,-1)
         # white dot indicates original click location
         cv2.circle(map_campus,(ix,iy),1,(255,255,255),-1)
 
@@ -99,27 +89,54 @@ def click_event(event,x,y,flags,param):
 # Source and Target Description
 # ============================================================
 
+def intercept_click(ix,iy):
+    """Helper function that intercepts click values and changes to desired test"""
+    if click_count%2 == 0: # Target, smallest
+        ix = 50
+        iy = 430
+    else: # Source, largest
+        ix = 70
+        iy = 210
+    return ix,iy
+
+def change_color():
+    global color, click_count
+    # alternate colors based on clicks
+    if click_count >= len(colors)-1: # reset
+        click_count = 0
+    else:
+        click_count += 1
+    color = colors[click_count]
+
 def test_clouds():
-    """Check clouds of every other 6 pixels in the map
-    Returns the xy coordinates sorted by cloud size"""
-    global click_count
+    """Check clouds of every other 10 pixels in the map
+    and lists the xy coordinates sorted by cloud size"""
     clouds = []
+    min_cloud = (0,0,10)
+    max_cloud = (0,0,10)
     for x in xrange(MAP_W):
         for y in xrange(MAP_H):
-            if (x%6 == 0) and (y%6 == 0):
-                click_count += 1
+            if (x%10 == 0) and (y%10 == 0):
                 idx = create_building(x,y)
-                clouds.append((x,y,pixel_cloud(x,y)))
-    sorted_cloud = sorted(clouds, key=lambda k:-k[2])
-    print sorted_cloud
+                # change_color() # don't draw
+                size = pixel_cloud(x,y)
+                if (size < min_cloud[2]):
+                    min_cloud = (x,y,size)
+                elif (size > max_cloud[2]):
+                    max_cloud = (x,y,size)
+                clouds.append((x,y,size))
+    sorted_clouds = sorted(clouds, key=lambda k:-k[2])
+    print 'Max cloud', max_cloud
+    print 'Min cloud', min_cloud
+    print 'Sorted clouds', sorted_clouds
 
 def create_building(x,y):
     global num_buildings, buildings
     idx = int(map_labeled[y][x])
     # add new x,y as a new building
     building = {}
-    building['number'] = num_buildings
-    building['name'] = 'Building ' + str(num_buildings)
+    building['number'] = len(buildings)+1
+    building['name'] = 'Building ' + str(len(buildings)+1)
     building['centroid'] = (x,y)
     building['xywh'] = (x,y,1,1)
     buildings.append(building)
@@ -145,16 +162,21 @@ def pixel_cloud(x,y):
         t = buildings[-1] # the newly added building
         # Note these methods require xywh, centroid, number
         idx = int(map_labeled[y][x])
+        # near = xy_near(s,x,y)
+        # near = is_near(s,t) # Keep smaller (1 pixel) building's relationship
         near = is_near(s,t) or is_near(t,s)
         relationships.append([is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t),near,num,idx])
         # relationships.append([is_north(s,t), is_east(s,t), is_near(s,t),idx])
+    # print "Relationships:", relationships
 
-    print "Relationships:", relationships
+    relationships, sorted_indices = reduce_by_nearness(relationships)
+    # print 'New relationships:', relationships
 
-    # flood_fill(x,y,relationships)
+    # Recursively generate ambiguity cloud based on pruned relationships and sorted indices
+    flood_fill(x,y,relationships,sorted_indices)
 
     cloud_size = len(cloud) * pix
-    print "Size of cloud:", cloud_size, "(recursive calls: %d)" %recursive_calls
+    print 'Size of cloud:', cloud_size, '(recursive calls: %d)' %recursive_calls
 
     # Color in the cloud
     for xy in cloud:
@@ -164,19 +186,21 @@ def pixel_cloud(x,y):
         # Draw filled circle with radius of 5
         cv2.circle(map_campus,(col,row),pix/2,color,-1)
 
-    relationships, sorted_indices = reduce_by_nearness(relationships)
-
     description = ts_description(x,y,relationships,sorted_indices)
     print description
     return cloud_size
 
 def reduce_by_nearness(relationships):
+    # Experiment with limit
+    # Increasing it does not shrink ambiguity by much
+    # Users seem confused by more than 3 descriptions
+    limit = 3
     distances_to = {}
     for i in xrange(num_buildings-1):
         # Only keep near relationships
         if relationships[i][4] == False:
-            # Change all previous results to False
-            relationships[i][:4] = [False,False,False,False,False]
+            # Change all values to False (ignore)
+            relationships[i][:5] = [False,False,False,False,False]
         else:
         # Of the remaining 'near' relationships, sort by distance
             s = relationships[i][5]
@@ -187,15 +211,16 @@ def reduce_by_nearness(relationships):
     # Keep relationships only with three closest structures
     sorted_distances = sorted(distances_to.items(), key=lambda k:k[1])
     sorted_indices = [int(tup[0]) for tup in sorted_distances]
-    if len(sorted_indices) > 3:
-        for n in xrange(3,len(sorted_indices)):
+    # If there more than three structures indicated, set rest to be ignored
+    if len(sorted_indices) > limit:
+        for n in xrange(limit,len(sorted_indices)):
             idx = sorted_indices[n]
-            relationships[idx][:4] = [False,False,False,False,False]
-        # Prune the list of indices
-        sorted_indices = sorted_indices[:3]
-    # print 'Sorted distances:', sorted_distances
+            relationships[idx][:5] = [False,False,False,False,False]
+        # Prune the list of indices to contain only the limit
+        sorted_indices = sorted_indices[:limit]
+    print 'Sorted distances:', sorted_distances
     # print 'Distances:', distances_to
-    # print 'Sorted indices:', sorted_indices
+    print 'Sorted indices:', sorted_indices
     # print 'New relationships:', relationships
     return relationships, sorted_indices
 
@@ -210,7 +235,7 @@ def what_description(idx):
             what += descr[i] + ' structure'
     return what
 
-def ts_description(x,y,relationships,sorted_indices):
+def ts_description(x, y, relationships, sorted_indices):
     coordinates = '(%d,%d)' %(x,y)
     if click_count%2 == 1:
         print 'Target: ' #+ coordinates
@@ -262,7 +287,7 @@ def ts_description(x,y,relationships,sorted_indices):
     description = description[:-2] + '.'
     return description
 
-def flood_fill(x,y,rel_table):
+def flood_fill(x, y, rel_table, indices):
     """Recursive algorithm that starts at x and y and changes any
     adjacent pixel that match rel_table"""
     global cloud, called, recursive_calls
@@ -281,13 +306,25 @@ def flood_fill(x,y,rel_table):
         s = buildings[num]
         t = buildings[-1]
         t['centroid'] = (x,y) # change centroid to new x,y
+        t['xywh'] = (x,y,100,100)
+        if 'near_points' in t:
+            del t['near_points']
+        buildings[t['number']-1] = t
         idx = int(map_labeled[y][x])
-        near = is_near(s,t) or is_near(t,s)
-        # Note these methods require xywh, centroid, number
-        # rel.append([is_north(s,t),is_east(s,t),is_near(s,t),idx])
-        rel.append([is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t),near,num,idx])
+        # Only check relevant relations
+        if num in tuple(indices):
+            # near = xy_near(s,x,y)
+            # near = is_near(s,t) # Keep smaller (1 pixel) building's relationship
+            near = is_near(s,t) or is_near(t,s)
+            if (near):
+                rel.append([is_north(s,t), is_south(s,t), is_east(s,t), is_west(s,t),near,num,idx])
+            else:
+                rel.append([False,False,False,False,False,num,idx])
+        # Else set all values to default False
+        else:
+            rel.append([False,False,False,False,False,num,idx])
 
-    # print rel
+    # print 'Flood Fill Rel:', rel
 
     # Base case. If the current x,y is not the right rel do nothing
     if rel != rel_table:
@@ -300,16 +337,16 @@ def flood_fill(x,y,rel_table):
     # on boundary
 
     if x > (pix-1): # left # originally 0
-        flood_fill(x-pix, y, rel_table)
+        flood_fill(x-pix, y, rel_table, indices)
 
     if y > (pix-1): # up # originally 0
-        flood_fill(x, y-pix, rel_table)
+        flood_fill(x, y-pix, rel_table, indices)
 
     if x < MAP_W-(pix+1): # right # originally MAP_W-1
-        flood_fill(x+pix, y, rel_table)
+        flood_fill(x+pix, y, rel_table, indices)
 
     if y < MAP_H-(pix+1): # down # originall MAP_H-`
-        flood_fill(x, y+pix, rel_table)
+        flood_fill(x, y+pix, rel_table, indices)
 
 def index_valid(x,y):
     x = xy[0]
@@ -520,6 +557,7 @@ def counting_dict(dic,key):
         dic[key] = 1
     return dic
 
+# TODO: fix... it used to work?
 def find_extrema():
     """Find singularly defining characteristics and remove other details"""
     global buildings
@@ -1165,9 +1203,8 @@ def draw_triangle(p1,p2,p3):
     cv2.line(map_campus,p2,p3,(0,128,255),2)
     cv2.line(map_campus,p3,p1,(0,128,255),2)
 
-def get_near_points(building):
-    if 'near_points' not in building:
-        shift = 30 # Empirically chosen
+def get_near_points(building,shift):
+    if 'near_points' not in building: # or building['number'] > num_buildings:
         # Extract four corners: nw,ne,se,sw
         x1,y1,w1,h1 = shift_corners(building,shift)
         p1,p2,p3,p4 = extract_corners(x1,y1,w1,h1)
@@ -1188,8 +1225,9 @@ def is_near(s,t,draw=False):
         s = buildings[s]
         t = buildings[t]
 
-    s_points = get_near_points(s)
-    t_points = get_near_points(t)
+    shift = 30 # Empirically chosen
+    s_points = get_near_points(s,shift)
+    t_points = get_near_points(t,shift)
 
     s1,s2,s3,s4,s0 = unpack(s_points)
     t1,t2,t3,t4,t0 = unpack(t_points)
@@ -1213,6 +1251,33 @@ def is_near(s,t,draw=False):
             # Mandatory
             return True
     return False
+
+# def xy_near(s,x,y):
+#     """Variant of is_near that takes in xy instead of target building"""
+#     shift = 20
+#     s_points = get_near_points(s,shift)
+#     t_points 
+#     s1,s2,s3,s4,s0 = unpack(s_points)
+#     pt = (x,y)
+#     if is_in_triangle(pt,s1,s2,s3) or is_in_triangle(pt,s3,s4,s1):
+#         return True
+#     return False
+
+# def xy_near_points(building,shift):
+#     if 'near_points' not in building: # or building['number'] > 27:
+#         # Extract four corners: nw,ne,se,sw
+#         x1,y1,w1,h1 = shift_corners(building,shift)
+#         p1,p2,p3,p4 = extract_corners(x1,y1,w1,h1)
+#         p0 = building['centroid']
+#         points = (p1,p2,p3,p4,p0)
+#         # draw_rectangle(p1,p2,p3,p4)
+#         # Add new points to source
+#         building['near_points'] = points
+#         idx = building['number'] - 1
+#         buildings[idx] = building
+#     else:
+#         points = building['near_points']
+#     return points
 
 def transitive_reduce(n_table, s_table, e_table, w_table, near_table):
     """Output should use building names rather than numbers"""
@@ -1276,12 +1341,12 @@ def generate_graph():
     return graph
 
 def dijkstra(graph,src,dest,visited=[],distances={},predecessors={}):
-    """ calculates a shortest path tree routed in src"""
+    """Calculates a shortest path tree routed in src"""
     # a few sanity checks
     if src not in graph:
         raise TypeError('the root of the shortest path tree cannot be found in the graph')
     if dest not in graph:
-        raise TypeError('the target of the shortest path cannot be found in the graph')    
+        raise TypeError('the target of the shortest path cannot be found in the graph')
     # ending condition
     if src == dest:
         # We build the shortest path and display it
@@ -1331,8 +1396,8 @@ def get_euclidean_distance(source,target):
 
     x1 = s['centroid'][0]
     x2 = t['centroid'][0]
-    y1 = s['centroid'][0]
-    y2 = t['centroid'][0]
+    y1 = s['centroid'][1]
+    y2 = t['centroid'][1]
 
     base = abs(x1-x2)
     height = abs(y1-y2)
@@ -1378,7 +1443,7 @@ def main():
                 modeval = 'path generation'
             else:
                 modeval = 'cloud generation'
-            print '\nChanging mode to', modeval,'(you pressed m)...\n'
+            print 'Changing mode to', modeval,'(you pressed m)...\n'
         if k == 27:
             break
 
