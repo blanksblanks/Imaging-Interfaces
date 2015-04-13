@@ -668,7 +668,7 @@ def describe_size(building, max_area):
     elif ratio > 0.4: # cutoff at Journalism & Furnald
         return 'large'
     elif ratio > 0.16: # cutoff at Philosophy
-        return 'middling-sized'
+        return 'midsized'
     elif ratio > 0.1: # cutoff Earl Hall
         return 'small'
     else:
@@ -1012,22 +1012,22 @@ def print_table(table,num_buildings):
 def is_north(s,t):
     """Find out if 'North of S is T'"""
     # Form triangle to north border: (x,0)
-    return triangulate_FOV(s,t,-1,0,1)
+    return triangulate_FOV(s,t,-1,0,0.8)
 
 def is_south(s,t):
     """Find out if 'South of S is T'"""
     # Form triangle to south border: (x,MAP_H)
-    return triangulate_FOV(s,t,-1,MAP_H,1)
+    return triangulate_FOV(s,t,-1,MAP_H,0.8)
 
 def is_east(s,t):
     """Find out if 'East of S is T'"""
     # Form triangle to east border: (MAP_W,y)
-    return triangulate_FOV(s,t,MAP_W,-1,1.2)
+    return triangulate_FOV(s,t,MAP_W,-1,1.5)
 
 def is_west(s,t):
     """Find out if 'West of S is T'"""
     # Form triangle to west border: (0,y)
-    return triangulate_FOV(s,t,0,-1,1.2)
+    return triangulate_FOV(s,t,0,-1,1.5)
 
 def triangulate_FOV(s,t,x,y,slope,draw=False):
     """Create a triangle FOV with 3 points and
@@ -1253,24 +1253,25 @@ def is_near(s,t,draw=False):
 
 def transitive_reduce(n_table, s_table, e_table, w_table, near_table):
     """Output should use building names rather than numbers"""
-    for t in range(0, num_buildings):
-        for s in range(0, num_buildings):
-            if n_table[s][t]:
-                for u in range(0, num_buildings):
-                    if n_table[t][u]:
-                        n_table[s][u] = False
-            if s_table[s][t]:
-                for u in range(0, num_buildings):
-                    if s_table[t][u]:
-                        s_table[s][u] = False
-            if w_table[s][t]:
-                for u in range(0, num_buildings):
-                    if w_table[t][u]:
-                        w_table[s][u] = False
-            if e_table[s][t]:
-                for u in range(0, num_buildings):
-                    if e_table[t][u]:
-                        e_table[s][u] = False
+    # TODO: Uncomment these and explain
+    # for t in range(0, num_buildings):
+    #     for s in range(0, num_buildings):
+    #         if n_table[s][t]:
+    #             for u in range(0, num_buildings):
+    #                 if n_table[t][u]:
+    #                     n_table[s][u] = False
+    #         if s_table[s][t]:
+    #             for u in range(0, num_buildings):
+    #                 if s_table[t][u]:
+    #                     s_table[s][u] = False
+    #         if w_table[s][t]:
+    #             for u in range(0, num_buildings):
+    #                 if w_table[t][u]:
+    #                     w_table[s][u] = False
+    #         if e_table[s][t]:
+    #             for u in range(0, num_buildings):
+    #                 if e_table[t][u]:
+    #                     e_table[s][u] = False
 
     # If t is north of s we no longer need to say s is south of t
     # Similarly, east west relationships can be inferred
@@ -1388,50 +1389,43 @@ def get_euclidean_distance(source,target):
     hypotenuse = math.sqrt(math.pow(base,2)+(math.pow(height,2)))
     return hypotenuse
 
-def step_guidance(s,t,parens):
+def step_guidance(s,t,parens,name=False):
     """'Go to the building that is east and near (which is cross-shaped).
     Then go to the building that is north (which is oriented east-to-west).
     Then go to the building that is north and east (which is medium-sized and oriented north-to-south)
     """
-    description = 'Then go to the building that is '
-    # if n_table[s][t]
-    #     # for idx in range(0, num_buildings-1):
-    # # rel_count = 0
-    # # for idx in sorted_indices:
-    # #     count = 0
-    # #     if relationships[idx][0]:
-    # #         description += 'north of '
-    # #         count += 1
-    # #     if relationships[idx][1]:
-    # #         description += 'south of '
-    # #         count += 1
-    # #     if relationships[idx][2]:
-    # #         if count == 0:
-    # #             description += 'east of '
-    # #             count += 1
-    # #         else:
-    # #             description += 'and east of '
-    # #     if relationships[idx][3]:
-    # #         if count == 0:
-    # #             description += 'west of '
-    # #             count += 1
-    # #         else:
-    # #             description += 'and west of '
-    # #     # Implied nearness
-    # #     # if relationships[idx][4]:
-    # #     #     if count == 0:
-    # #     #         descr += "near "
-    # #     #         count += 1
-    # #     #     else:
-    # #     #         desc += "and near "
-    # #     if count != 0:
-    # #         description += what_description(idx)
-    # #         description += ' (%s), ' %buildings[idx]['name']
-    # #         rel_count += 1
-    # #         if rel_count == len(sorted_indices)-1:
-    # #             description += 'and '
-    # # description = description[:-2] + '.'
-    # # return description
+    text = 'Then go to the building that is '
+    count = 0
+    if n_table[s][t]: # north of s is t
+        text += 'NORTH'
+        count += 1
+    elif n_table[t][s] or s_table[t][s]:
+        text += 'SOUTH'
+        count += 1
+    if e_table[s][t]:
+        if count == 0:
+            text += 'EAST'
+        else:
+            text == ' and EAST'
+    elif e_table[t][s] or w_table[s][t]:
+        if count == 0:
+            text += 'WEST'
+        else:
+            text += ' and WEST'
+    # if count == 0:
+    #     if is_north(s,t):
+    #         text += 'north'
+    if count != 0:
+        if parens:
+            text += ' (%s)' %what_description(t)
+        if name:
+            text += ' <%s>' %buildings[t]['name']
+
+    text += '.'
+    # print 'EAST:', is_east(s,t), e_table[s][t]
+    # print 'WEST:', is_west(s,t), e_table[t][s], w_table[s][t]
+    print text
+
 
 # ============================================================
 # Main Invocation
@@ -1457,6 +1451,13 @@ def main():
     # print 'Graph', graph
     dijkstra(graph,'0','22')
     print 'Paths', paths
+
+    # Example: [[22, 19, 12, 8, 4, 0]] len: 6
+    for path in paths:
+        for i in xrange(len(path)-1):
+            s = path[i]
+            t = path[i+1]
+            step_guidance(s,t,True,True)
 
     # Step 3. Source and Target Description and User Interface
     cv2.namedWindow('Columbia Campus Map')
