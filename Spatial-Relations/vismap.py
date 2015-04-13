@@ -22,6 +22,7 @@ called = {}
 recursive_calls = 0
 # Blocks of pixels to check in each direction for cloud generation
 pix = 2
+graph = {}
 
 drawing = False # true if mouse is pressed
 mode = True # if True, generate path. Press 'm' to toggle to curve
@@ -653,7 +654,6 @@ def unpack(tup):
         return tup[0],tup[1],tup[2],tup[3],tup[4]
 
 def count_points(building,xywh):
-
     x,y,w,h = unpack(xywh)
 
     # Tolerance based on ratio of min(w,h) as building sizes vary
@@ -1271,15 +1271,55 @@ def transitive_reduce(n_table, s_table, e_table, w_table, near_table):
 # Path Generation
 # ============================================================
 
-def generate_path():
-    dist_table = {}
+def generate_graph():
+    graph = {}
     for s in xrange(0, num_buildings):
         distances = {}
         for t in xrange(0, num_buildings):
             if s != t:
                 distances[str(t)] = get_euclidean_distance(s,t)
-        dist_table[str(s)] = distances
+        graph[str(s)] = distances
     # print dist_table
+    return graph
+
+def dijkstra(graph,src,dest,visited=[],distances={},predecessors={}):
+    """ calculates a shortest path tree routed in src"""
+    # a few sanity checks
+    if src not in graph:
+        raise TypeError('the root of the shortest path tree cannot be found in the graph')
+    if dest not in graph:
+        raise TypeError('the target of the shortest path cannot be found in the graph')    
+    # ending condition
+    if src == dest:
+        # We build the shortest path and display it
+        path=[]
+        pred=dest
+        while pred != None:
+            path.append(pred)
+            pred=predecessors.get(pred,None)
+        print('shortest path: '+str(path)+" cost="+str(distances[dest])) 
+    else:
+        # if it is the initial  run, initializes the cost
+        if not visited:
+            distances[src]=0
+        # visit the neighbors
+        for neighbor in graph[src] :
+            if neighbor not in visited:
+                new_distance = distances[src] + graph[src][neighbor]
+                if new_distance < distances.get(neighbor,float('inf')):
+                    distances[neighbor] = new_distance
+                    predecessors[neighbor] = src
+        # mark as visited
+        visited.append(src)
+        # now that all neighbors have been visited: recurse
+        # select the non visited node with lowest distance 'x'
+        # run Dijskstra with src='x'
+        unvisited={}
+        for k in graph:
+            if k not in visited:
+                unvisited[k] = distances.get(k,float('inf'))
+        x=min(unvisited, key=unvisited.get)
+        dijkstra(graph,x,dest,visited,distances,predecessors)
 
 def get_euclidean_distance(source,target):
     """ private double getEuclideanDistance(Vertex v1, Vertex v2) {
@@ -1309,7 +1349,7 @@ def get_euclidean_distance(source,target):
 
 def main():
 
-    global buildings, mode
+    global buildings, mode, graph
 
     # Step 1. Generate 'what' for each building by analyzing image
     # Note: images and buildings information are stored as global vars
@@ -1321,7 +1361,8 @@ def main():
     n_table, s_table, e_table, w_table, near_table = analyze_where(buildings)
 
     # Step 4. Generate path for user
-    generate_path()
+    graph = generate_graph()
+    dijkstra(graph,'0','26')
     # analyze_single_where(20, 'west', buildings)
 
     cv2.namedWindow('Columbia Campus Map')
