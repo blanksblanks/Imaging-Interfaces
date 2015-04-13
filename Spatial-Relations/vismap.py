@@ -50,6 +50,16 @@ pix = 2
 # 4. Path Generation
 graph = {}
 paths = []
+# S1G1: Broadway Gates -^ Mudd
+# S2G2: Pupin -v Alma Mater
+# S3G3: Carman -> Hartley
+# S4G4: Kent <- Mathematics
+# S5G5: Butler ^- Physical Fitness Center
+# S6G6: Journalism -^ Uris
+# S7G7: Avery ^- Shapiro
+# S8G8: Lion's Court ^- Lowe
+S_LIST = [(8,321)]
+G_LIST = [(214,49)]
 
 
 # ============================================================
@@ -64,7 +74,7 @@ def click_event(event,x,y,flags,param):
 
         drawing = True
         ix,iy = x,y
-        ix, iy = intercept_click(ix,iy)
+        # ix, iy = intercept_click(ix,iy)
         # print 'Mouse clicked: ({},{})'.format(ix,iy)
         clicks.append((ix,iy))
 
@@ -226,7 +236,15 @@ def reduce_by_nearness(relationships):
 
     # Keep relationships only with three closest structures
     sorted_distances = sorted(distances_to.items(), key=lambda k:k[1])
-    sorted_indices = [int(tup[0]) for tup in sorted_distances]
+
+    # Special case: if click is inside building, its color value - 1
+    # (its building index) should be at start of list
+    click_idx = relationships[0][-1] - 1
+    if click_idx == 0: # Outside
+        sorted_indices = [int(tup[0]) for tup in sorted_distances]
+    else: # Inside
+        sorted_indices = [int(tup[0]) for tup in sorted_distances if int(tup[0]) != click_idx]
+        sorted_indices.insert(0,click_idx)
     # If there more than three structures indicated, set rest to be ignored
     if len(sorted_indices) > limit:
         for n in xrange(limit,len(sorted_indices)):
@@ -298,7 +316,11 @@ def ts_description(x, y, relationships, sorted_indices):
             description += what_description(idx)
             description += ' (%s), ' %buildings[idx]['name']
             rel_count += 1
-            if rel_count == len(sorted_indices)-1:
+            if sorted_indices[1] == -1: # Only one descriptor
+                break
+            if sorted_indices[0] == -1 and rel_count == len(sorted_indices)-2:
+                description += 'and '
+            elif sorted_indices[0] != -1 and rel_count == len(sorted_indices)-1:
                 description += 'and '
     description = description[:-2] + '.'
     return description
@@ -1395,6 +1417,7 @@ def step_guidance(s,t,parens,name=False):
     Then go to the building that is north and east (which is medium-sized and oriented north-to-south)
     """
     text = 'Then go to the building that is '
+
     count = 0
     if n_table[s][t]: # north of s is t
         text += 'NORTH'
