@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from matplotlib.path import Path
 import sys
+import math
 
 # ============================================================
 # Globals
@@ -19,13 +20,14 @@ color = colors[0]
 cloud = {}
 called = {}
 recursive_calls = 0
-# Blocks of pixels to check in each direction
+# Blocks of pixels to check in each direction for cloud generation
 pix = 2
 
 drawing = False # true if mouse is pressed
-# mode = True # if True, draw rectangle. Press 'm' to toggle to curve
+mode = True # if True, generate path. Press 'm' to toggle to curve
 ix,iy = -1,-1
 click_count = -1
+clicks = []
 
 map_labeled = cv2.imread('ass3-labeled.pgm', 0) # load map_labeled as grayscale
 map_campus = cv2.imread('ass3-campus.pgm', 1) # load map_campus as color
@@ -47,28 +49,29 @@ def click_event(event,x,y,flags,param):
 
     if event == cv2.EVENT_LBUTTONDOWN:
 
-        # Function to test ALL clouds for largest/smallest
-        test_clouds()
-
-        # Generate largest cloud
-        # x = 126
-        # y = 480
-
         drawing = True
         ix,iy = x,y
-        idx = create_building(ix,iy)
         print 'Mouse clicked: ({},{})'.format(ix,iy)
-        # print buildings[idx-1]['name']
+        clicks.append((ix,iy))
 
-        # alternate colors based on clicks
-        if click_count >= len(colors)-1: # reset
-            click_count = 0
+        if mode == True:
+            # Function to test ALL clouds for largest/smallest
+            test_clouds()
         else:
-            click_count += 1
-        color = colors[click_count]
+            # Generate largest cloud
+            # x = 126
+            # y = 480
+            idx = create_building(ix,iy)
 
-        # get x,y coordinates of all similar pixels
-        pixels = pixel_cloud(x,y)
+            # alternate colors based on clicks
+            if click_count >= len(colors)-1: # reset
+                click_count = 0
+            else:
+                click_count += 1
+            color = colors[click_count]
+
+            # Generate cloud of all similar pixels
+            pixels = pixel_cloud(ix,iy)
 
     # elif event == cv2.EVENT_MOUSEMOVE:
     #     if drawing == True:
@@ -90,7 +93,7 @@ def click_event(event,x,y,flags,param):
         #     cv2.circle(map_campus,(x,y),pix/2,(255,255,255),-1)
 
 # ============================================================
-# Source and Target Description and User Interface
+# Source and Target Description
 # ============================================================
 
 def test_clouds():
@@ -265,7 +268,6 @@ def what_description(idx):
             what += descr[i] + ' structure'
     return what
 
-
 def flood_fill(x,y,rel_table):
     """Recursive algorithm that starts at x and y and changes any
     adjacent pixel that match rel_table"""
@@ -322,8 +324,6 @@ def index_valid(x,y):
         return True
     else:
         return False
-
-
 
 # ============================================================
 # The "What"
@@ -445,7 +445,7 @@ def measure_building(cnt, area, print_rect=False):
 
     return mbr, centroid, extent, xywh
 
-def analyze_buildings(names):
+def analyze_what(names):
     """Find information about buildings and save in list of dicts"""
     global num_buildings, buildings
     num_buildings = len(names)
@@ -862,7 +862,7 @@ def central_axis(cx,w):
 #     return extrema
 
 
-def print_info(buildings):
+def print_info():
     for building in buildings:
         print building['number'], ':', building['name']
         print '     Minimum Bounding Rectangle:', building['mbr'][0], ',', building['mbr'][1]
@@ -874,7 +874,7 @@ def print_info(buildings):
 # The "Where"
 # ============================================================
 
-def analyze_relations(buildings):
+def analyze_where(buildings):
     """Find all binary spatial relationships for every pair,
     and apply transitive reduction."""
 
@@ -1111,7 +1111,7 @@ def triangulate_FOV(s,t,x,y,slope,draw=False):
 
     return False # if not in FOV, return false
 
-def analyze_relations_single(source, direction, buildings):
+def analyze_single_where(source, direction, buildings):
     """Analyze relations for single building"""
     # Try 11 Lowe and then 21 Journalism
     # num_buildings = len(buildings)
@@ -1141,24 +1141,6 @@ def is_in_triangle(p,a,b,c):
         return True
     else:
         return False
-
-def get_euclidean_distance(s,t):
-    """ private double getEuclideanDistance(Vertex v1, Vertex v2) {
-        double base = Math.abs(v1.x - v2.x); // x1 - x2
-        double height = Math.abs(v1.y - v2.y); // y1 - y2
-        double hypotenuse = Math
-                .sqrt((Math.pow(base, 2) + (Math.pow(height, 2))));
-        return hypotenuse;
-    """
-    x1 = s['centroid'][0]
-    x2 = t['centroid'][0]
-    y1 = s['centroid'][0]
-    y2 = t['centroid'][0]
-
-    base = abs(x1-x2)
-    height = abs(y1-y2)
-    hypotenuse = math.sqrt(math.pow(base,2)+(math.pow(height,2)))
-    return hypotenuse
 
 def shift_corners(building, shift):
     # Shift should be negative if you want to tuck in points
@@ -1286,9 +1268,40 @@ def transitive_reduce(n_table, s_table, e_table, w_table, near_table):
 
 
 # ============================================================
-# Final PArt
+# Path Generation
 # ============================================================
 
+def generate_path():
+    dist_table = {}
+    for s in xrange(0, num_buildings):
+        distances = {}
+        for t in xrange(0, num_buildings):
+            if s != t:
+                distances[str(t)] = get_euclidean_distance(s,t)
+        dist_table[str(s)] = distances
+    # print dist_table
+
+def get_euclidean_distance(source,target):
+    """ private double getEuclideanDistance(Vertex v1, Vertex v2) {
+        double base = Math.abs(v1.x - v2.x); // x1 - x2
+        double height = Math.abs(v1.y - v2.y); // y1 - y2
+        double hypotenuse = Math
+                .sqrt((Math.pow(base, 2) + (Math.pow(height, 2))));
+        return hypotenuse;
+    """
+    # Get buildings from indices
+    s = buildings[source]
+    t = buildings[target]
+
+    x1 = s['centroid'][0]
+    x2 = t['centroid'][0]
+    y1 = s['centroid'][0]
+    y2 = t['centroid'][0]
+
+    base = abs(x1-x2)
+    height = abs(y1-y2)
+    hypotenuse = math.sqrt(math.pow(base,2)+(math.pow(height,2)))
+    return hypotenuse
 
 # ============================================================
 # Main Invocation
@@ -1296,19 +1309,24 @@ def transitive_reduce(n_table, s_table, e_table, w_table, near_table):
 
 def main():
 
+    global buildings, mode
+
     # Step 1. Generate 'what' for each building by analyzing image
     # Note: images and buildings information are stored as global vars
-    names = load_names('ass3-table.txt')
-    analyze_buildings(names) # TODO: change to what?
-    print_info(buildings)
+    building_names = load_names('ass3-table.txt')
+    analyze_what(building_names)
+    print_info()
 
     # Step 2. Generate 'where' lookup table for building relations
-    n_table, s_table, e_table, w_table, near_table = analyze_relations(buildings)
-    # analyze_relations_single(20, 'west', buildings)
+    n_table, s_table, e_table, w_table, near_table = analyze_where(buildings)
+
+    # Step 4. Generate path for user
+    generate_path()
+    # analyze_single_where(20, 'west', buildings)
 
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', click_event)
-    print "Showing image..."
+    print "\nShowing image...\n"
 
     # print buildings
 
@@ -1317,10 +1335,13 @@ def main():
     while(1):
         cv2.imshow('Columbia Campus Map', map_campus)
         k = cv2.waitKey(1) & 0xFF
-        # if k == ord('m'):
-        #     print 'pressed m'
-        #     mode = not mode
-        # el
+        if k == ord('m'):
+            mode = not mode
+            if mode:
+                modeval = 'path generation'
+            else:
+                modeval = 'cloud generation'
+            print '\nChanging mode to', modeval,'(you pressed m)...\n'
         if k == 27:
             break
 
