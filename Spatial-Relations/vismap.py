@@ -49,7 +49,6 @@ pix = 2
 
 # 4. Path Generation
 # graph = {}
-paths = []
 # S1G1: Broadway Gates -^ Mudd
 # S2G2: Pupin -v Alma Mater
 # S3G3: Carman -> Hartley
@@ -60,6 +59,9 @@ paths = []
 # S8G8: Lawn ^- Low
 S_LIST = [(8,320),(35,4),(78,477),(232,285),(132,443),(52,398),(203,160),(135,369)]
 G_LIST = [(205,51),(137,291),(257,374),(36,178),(88,68),(134,97),(143,37),(172,212)]
+paths = [] # Will contain all the sequences of instructions for each 8 paths
+path_parens = []
+path_no_parens = []
 
 # ============================================================
 # User Interface
@@ -74,20 +76,18 @@ def click_event(event,x,y,flags,param):
         drawing = True
         ix,iy = x,y
         # ix, iy = intercept_click(ix,iy)
-        # print 'Mouse clicked: ({},{})'.format(ix,iy)
+        print 'Mouse clicked: ({},{})'.format(ix,iy)
         clicks.append((ix,iy))
 
-        if mode == True:
+        if mode == True: # User tests
+            show_instruction()
+
+        else: # Cloud Ambiguity
             # Function to test ALL clouds for largest/smallest
             # test_clouds()
             idx = create_building(ix,iy)
             change_color() # and increment click count
-            # Generate cloud of all similar pixels
-            pixels = pixel_cloud(ix,iy)
-
-        else:
-            print 'click'
-
+            pixels = pixel_cloud(ix,iy) # Generate cloud of all similar pixels
 
     # elif event == cv2.EVENT_MOUSEMOVE:
     #     if drawing == True:
@@ -99,9 +99,12 @@ def click_event(event,x,y,flags,param):
 
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
-        cv2.circle(map_campus,(ix,iy),pix,color,-1)
-        # white dot indicates original click location
-        cv2.circle(map_campus,(ix,iy),1,(255,255,255),-1)
+        if mode == True:
+            cv2.circle(map_campus,(ix,iy),6,(0,128,255),-1)
+        else:
+            cv2.circle(map_campus,(ix,iy),pix,color,-1)
+            # white dot indicates original click location
+            cv2.circle(map_campus,(ix,iy),1,(255,255,255),-1)
 
         # if mode == True:
         #     # cv2.rectangle(map_campus,(ix,iy),(x,y),(0,255,0),-1)
@@ -1353,12 +1356,12 @@ def find_closest(xy):
         return distances.argmin()
 
 def generate_paths(graph):
-    global paths, S_LIST, G_LIST, buildings
+    global paths, S_LIST, G_LIST, buildings, path_parens, path_no_parens
 
     starting_points = []
     starting_indices = []
     terminal_points = []
-    path_descriptions = []
+    # path_descriptions = []
     path_ends = []
 
     # Find description for starting point
@@ -1366,8 +1369,10 @@ def generate_paths(graph):
         start = find_closest(xy)
         starting_points.append(start)
         idx = create_building(xy[0],xy[1])
-        description = first_step(idx,start,True)
-        path_descriptions.append([description])
+        text = first_step(idx,start,True)
+        path_parens.append([text])
+        text = first_step(idx,start,False)
+        path_no_parens.append([text])
         buildings.pop()
 
     for xy in G_LIST:
@@ -1395,12 +1400,16 @@ def generate_paths(graph):
         for j in xrange(len(path)-1):
             s = path[j]
             t = path[j+1]
-            text = step_guidance(s,t,True,True)
-            path_descriptions[i].append(text)
-        path_descriptions[i].append(path_ends[i])
+            text = step_guidance(s,t,True)
+            path_parens[i].append(text)
+            text = step_guidance(s,t,False)
+            path_no_parens[i].append(text)
+        path_parens[i].append(path_ends[i])
+        path_no_parens[i].append(path_ends[i])
 
     # print 'Paths', paths
-    # print 'Paths descriptions:', path_descriptions
+    print 'Paths (parens):', path_parens
+    print 'Paths (no parens):', path_no_parens
     # print 'Path endings:', path_ends
 
     # dijkstra(graph,'0','22')
