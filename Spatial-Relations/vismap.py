@@ -48,7 +48,7 @@ recursive_calls = 0
 pix = 2
 
 # 4. Path Generation
-graph = {}
+# graph = {}
 paths = []
 # S1G1: Broadway Gates -^ Mudd
 # S2G2: Pupin -v Alma Mater
@@ -155,9 +155,10 @@ def test_clouds():
     print 'Sorted clouds', sorted_clouds
 
 def create_building(x,y):
-    global num_buildings, buildings
-    idx = int(map_labeled[y][x])
+    global buildings
+    # idx = int(map_labeled[y][x])
     # add new x,y as a new building
+    idx = len(buildings)
     building = {}
     building['number'] = len(buildings)+1
     building['name'] = 'Building ' + str(len(buildings)+1)
@@ -1351,17 +1352,58 @@ def find_closest(xy):
             distances[i] = get_euclidean_distance(xy,i)
         return distances.argmin()
 
-def generate_paths():
-    global paths, S_LIST, G_LIST
+def generate_paths(graph):
+    global paths, S_LIST, G_LIST, buildings
 
     starting_points = []
+    starting_indices = []
+    terminal_points = []
+    path_descriptions = []
+    path_ends = []
 
     # Find description for starting point
     for xy in S_LIST:
         start = find_closest(xy)
         starting_points.append(start)
+        idx = create_building(xy[0],xy[1])
+        description = first_step(idx,start,True)
+        path_descriptions.append([description])
+        buildings.pop()
 
-    print starting_points
+    for xy in G_LIST:
+        end = find_closest(xy)
+        terminal_points.append(end)
+        idx = create_building(xy[0],xy[1])
+        description = terminal_guidance(idx,start)
+        path_ends.append(description)
+        buildings.pop()
+
+    print "Starting points", starting_points
+    print "Terminal points", terminal_points
+    # print "Graph", graph
+
+    for i in xrange(len(starting_points)):
+        start = starting_points[i]
+        end = terminal_points[i]
+        # Convert ints because graph keys are strings
+        dijkstra(graph, str(start), str(end),[],{},{})
+        # print "\nGraph", graph
+
+    # Example: [[22, 19, 12, 8, 4, 0]] len: 6
+    for i in xrange(len(paths)):
+        path = paths[i]
+        for j in xrange(len(path)-1):
+            s = path[j]
+            t = path[j+1]
+            text = step_guidance(s,t,True,True)
+            path_descriptions[i].append(text)
+        path_descriptions[i].append(path_ends[i])
+
+    # print 'Paths', paths
+    # print 'Paths descriptions:', path_descriptions
+    # print 'Path endings:', path_ends
+
+    # dijkstra(graph,'0','22')
 
 def dijkstra(graph,src,dest,visited=[],distances={},predecessors={}):
     """Calculates a shortest path tree routed in src. Based on this tutorial:
@@ -1372,11 +1414,23 @@ def dijkstra(graph,src,dest,visited=[],distances={},predecessors={}):
     global paths
     # a few sanity checks
     if src not in graph:
-        raise TypeError('the root of the shortest path tree cannot be found in the graph')
+        raise TypeError(src, ': the root of the shortest path tree cannot be found in the graph')
     if dest not in graph:
-        raise TypeError('the target of the shortest path cannot be found in the graph')
+        raise TypeError(dest, ': the target of the shortest path cannot be found in the graph')
+
     # ending condition
-    if src != dest:
+    if src == dest:
+        # We build the shortest path and display it
+        path=[]
+        pred=dest
+        while pred != None:
+            path.append(int(pred))
+            pred=predecessors.get(pred,None)
+        if path:
+            print('Shortest Path: '+str(path)+" (Cost: "+str(distances[dest])+')')
+            paths.append(path)
+            # print paths
+    else:
         # if it is the initial  run, initializes the cost
         if not visited:
             distances[src]=0
@@ -1398,17 +1452,7 @@ def dijkstra(graph,src,dest,visited=[],distances={},predecessors={}):
                 unvisited[k] = distances.get(k,float('inf'))
         x=min(unvisited, key=unvisited.get)
         dijkstra(graph,x,dest,visited,distances,predecessors)
-    else: # src is dest - our ending condition
-        # We build the shortest path and display it
-        path=[]
-        pred=dest
-        while pred != None:
-            path.append(int(pred))
-            pred=predecessors.get(pred,None)
-        if path:
-            print('Shortest Path: '+str(path)+" (Cost: "+str(distances[dest])+')')
-            paths.append(path)
-            # print paths
+
 
 def get_euclidean_distance(source,target):
     """Find the euclidean distance between two points
@@ -1429,6 +1473,7 @@ def get_euclidean_distance(source,target):
         s = buildings[source]
         x1 = s['centroid'][0]
         y1 = s['centroid'][1]
+
     else:
         x1 = source[0]
         y1 = source[1]
@@ -1442,12 +1487,73 @@ def get_euclidean_distance(source,target):
     hypotenuse = math.sqrt(math.pow(base,2)+(math.pow(height,2)))
     return hypotenuse
 
+def first_step(start,target,parens,name=False):
+    """'Go to the building that is east and near (which is cross-shaped).
+    """
+
+    inside = is_inside(start)
+
+    if inside:
+        text = 'You are inside a building'
+        if parens:
+            text += ' (%s)' %what_description(target)
+        if name:
+            text += ' <%s>' %buildings[target]['name']
+        text += ' to the '
+    else:
+        text = 'You are outside. Go to the nearby building that is '
+
+    s = buildings[start]
+    t = buildings[target]
+
+    if is_north(s,t): # north of s is t
+        if inside:
+            text += 'SOUTH'
+        else:
+            text += 'NORTH'
+    elif is_south(s,t):
+        if inside:
+            text += 'NORTH'
+        else:
+            text += 'SOUTH'
+    if is_east(s,t):
+        if inside:
+            text += 'WEST'
+        else:
+            text += 'EAST'
+    elif is_west(s,t):
+        if inside:
+            text += 'EAST'
+        else:
+            text += 'WEST'
+    if not inside:
+        if parens:
+            text += ' (%s)' %what_description(target)
+        if name:
+            text += ' <%s>' %buildings[target]['name']
+
+    text += '.'
+    # print 'EAST:', is_east(s,t), e_table[s][t]
+    # print 'WEST:', is_west(s,t), e_table[t][s], w_table[s][t]
+    # print text
+    return text
+
+def is_inside(idx):
+    building = buildings[idx]
+    x = building['centroid'][0]
+    y = building['centroid'][1]
+    pixel = int(map_labeled[y][x])-1
+    if pixel is 0:
+        return False
+    else:
+        return True
+
 def step_guidance(s,t,parens,name=False):
     """'Go to the building that is east and near (which is cross-shaped).
     Then go to the building that is north (which is oriented east-to-west).
     Then go to the building that is north and east (which is medium-sized and oriented north-to-south)
     """
-    text = 'Then go to the building that is '
+    text = 'Now go to the nearby building that is '
 
     count = 0
     if n_table[s][t]: # north of s is t
@@ -1478,8 +1584,40 @@ def step_guidance(s,t,parens,name=False):
     text += '.'
     # print 'EAST:', is_east(s,t), e_table[s][t]
     # print 'WEST:', is_west(s,t), e_table[t][s], w_table[s][t]
-    print text
+    # print text
+    return text
 
+def terminal_guidance(start,target):
+    if is_inside(target):
+        text = 'Your final destination is inside this building. Go '
+    else:
+        text = 'Your final destination is outside near this building. Go '
+
+    s = buildings[start]
+    t = buildings[target]
+
+    count = 0
+    if is_north(s,t): # north of s is t
+        text += 'NORTH'
+        count += 1
+    elif is_south(s,t):
+        text += 'SOUTH'
+        count += 1
+    if is_east(s,t):
+        if count == 0:
+            text += 'EAST'
+        else:
+            text == ' and EAST'
+    elif is_west(s,t):
+        if count == 0:
+            text += 'WEST'
+        else:
+            text += ' and WEST'
+    text += '.'
+    # print 'EAST:', is_east(s,t), e_table[s][t]
+    # print 'WEST:', is_west(s,t), e_table[t][s], w_table[s][t]
+    # print text
+    return text
 
 # ============================================================
 # Main Invocation
@@ -1487,7 +1625,7 @@ def step_guidance(s,t,parens,name=False):
 
 def main():
 
-    global buildings, mode, graph, paths
+    global buildings, mode, paths
 
     # Step 1. Generate 'what' for each building by analyzing image
     # Note: images and buildings information are stored as global vars
@@ -1501,19 +1639,10 @@ def main():
 
     # Step 4. Generate path for user
     graph = generate_graph()
+    generate_paths(graph)
     # paths = generate_paths()
     # print 'Graph', graph
-    dijkstra(graph,'0','22')
-    print 'Paths', paths
-
-    generate_paths()
-
-    # Example: [[22, 19, 12, 8, 4, 0]] len: 6
-    for path in paths:
-        for i in xrange(len(path)-1):
-            s = path[i]
-            t = path[i+1]
-            step_guidance(s,t,True,True)
+    # dijkstra(graph,'0','22')
 
     # Step 3. Source and Target Description and User Interface
     cv2.namedWindow('Columbia Campus Map')
