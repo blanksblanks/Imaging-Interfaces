@@ -62,6 +62,7 @@ G_LIST = [(205,51),(137,291),(257,374),(36,178),(88,68),(134,97),(143,37),(172,2
 paths = [] # Will contain all the sequences of instructions for each 8 paths
 path_parens = []
 path_no_parens = []
+itinerary_num = 1
 
 # ============================================================
 # User Interface
@@ -76,11 +77,14 @@ def click_event(event,x,y,flags,param):
         drawing = True
         ix,iy = x,y
         # ix, iy = intercept_click(ix,iy)
-        print 'Mouse clicked: ({},{})'.format(ix,iy)
         clicks.append((ix,iy))
 
         if mode == True: # User tests
-            show_instruction()
+            change_color() # and increment click count
+            print 'Mouse clicked: ({},{})'.format(ix,iy)
+            print 'Click count:', len(clicks)
+            if len(clicks) > len(path_parens[itinerary_num])-3:
+                print 'next itinerary!'
 
         else: # Cloud Ambiguity
             # Function to test ALL clouds for largest/smallest
@@ -100,7 +104,7 @@ def click_event(event,x,y,flags,param):
     elif event == cv2.EVENT_LBUTTONUP:
         drawing = False
         if mode == True:
-            cv2.circle(map_campus,(ix,iy),6,(0,128,255),-1)
+            cv2.circle(map_campus,(ix,iy),6,color,-1)
         else:
             cv2.circle(map_campus,(ix,iy),pix,color,-1)
             # white dot indicates original click location
@@ -1383,8 +1387,8 @@ def generate_paths(graph):
         path_ends.append(description)
         buildings.pop()
 
-    print "Starting points", starting_points
-    print "Terminal points", terminal_points
+    # print "Starting points", starting_points
+    # print "Terminal points", terminal_points
     # print "Graph", graph
 
     for i in xrange(len(starting_points)):
@@ -1400,16 +1404,16 @@ def generate_paths(graph):
         for j in xrange(len(path)-1):
             s = path[j]
             t = path[j+1]
-            text = step_guidance(s,t,True)
+            text = step_guidance(s,t,True,True)
             path_parens[i].append(text)
             text = step_guidance(s,t,False)
             path_no_parens[i].append(text)
         path_parens[i].append(path_ends[i])
         path_no_parens[i].append(path_ends[i])
 
-    # print 'Paths', paths
-    print 'Paths (parens):', path_parens
-    print 'Paths (no parens):', path_no_parens
+    print 'Paths', paths
+    # print 'Paths (parens):', path_parens
+    # print 'Paths (no parens):', path_no_parens
     # print 'Path endings:', path_ends
 
     # dijkstra(graph,'0','22')
@@ -1436,8 +1440,11 @@ def dijkstra(graph,src,dest,visited=[],distances={},predecessors={}):
             path.append(int(pred))
             pred=predecessors.get(pred,None)
         if path:
-            print('Shortest Path: '+str(path)+" (Cost: "+str(distances[dest])+')')
-            paths.append(path)
+            # print('Shortest Path: '+str(path)+" (Cost: "+str(distances[dest])+')')
+            correct_order = []
+            for item in reversed(path):
+                correct_order.append(item)
+            paths.append(correct_order)
             # print paths
     else:
         # if it is the initial  run, initializes the cost
@@ -1628,6 +1635,32 @@ def terminal_guidance(start,target):
     # print text
     return text
 
+def print_instructions(parens_first=True):
+    global path_parens, path_no_parens
+
+    if parens_first:
+        firsthalf = path_parens
+        secondhalf = path_no_parens
+    else:
+        firsthalf = path_no_parens
+        secondhalf = path_parens
+
+    for i in xrange(4):
+        print '\nITINERARY ' + str(i+1)
+        print '------'
+        itinerary = firsthalf[i]
+        for step in itinerary:
+            print step
+            print '------'
+
+    for i in xrange(4):
+        print '\nITINERARY ' + str(i+5)
+        print '------'
+        itinerary = secondhalf[i+4]
+        for step in itinerary:
+            print step
+            print '------'
+
 # ============================================================
 # Main Invocation
 # ============================================================
@@ -1652,6 +1685,7 @@ def main():
     # paths = generate_paths()
     # print 'Graph', graph
     # dijkstra(graph,'0','22')
+    print_instructions(parens_first=True)
 
     # Step 3. Source and Target Description and User Interface
     cv2.namedWindow('Columbia Campus Map')
