@@ -39,7 +39,8 @@ ix,iy = -1,-1
 click_count = -1
 clicks = []
 # green, red, blue, teal, yellow, orange, magenta
-colors = [(0,255,0),(0,0,255),(255,0,0), (255,255,0), (0,255,255),(0,128,255),(255,0,255)]
+# colors = [(0,255,0),(0,0,255),(255,0,0), (255,255,0), (0,255,255),(0,128,255),(255,0,255)]
+colors = [(255,0,0),(255,0,0),(255,0,0),(255,0,0),(255,0,0),(255,0,0),(255,0,0),(255,0,0)]
 color = colors[0]
 cloud = {}
 called = {}
@@ -62,7 +63,8 @@ G_LIST = [(205,51),(137,291),(257,374),(36,178),(88,68),(134,97),(143,37),(172,2
 paths = [] # Will contain all the sequences of instructions for each 8 paths
 path_parens = []
 path_no_parens = []
-itinerary_num = 1
+itinerary_num = 0
+user_responses = []
 
 # ============================================================
 # User Interface
@@ -70,7 +72,7 @@ itinerary_num = 1
 
 # mouse callback function
 def click_event(event,x,y,flags,param):
-    global ix,iy,drawing,mode,click_count,color
+    global ix,iy,drawing,mode,click_count,color,itinerary_num,map_campus
 
     if event == cv2.EVENT_LBUTTONDOWN:
 
@@ -81,10 +83,30 @@ def click_event(event,x,y,flags,param):
 
         if mode == True: # User tests
             change_color() # and increment click count
-            print 'Mouse clicked: ({},{})'.format(ix,iy)
-            print 'Click count:', len(clicks)
-            if len(clicks) > len(path_parens[itinerary_num])-3:
-                print 'next itinerary!'
+            print 'Clicked location: ({},{})'.format(ix,iy)
+            # print 'Click count:', len(clicks)
+            if len(clicks) == len(path_parens[itinerary_num])-1:
+                end = G_LIST[itinerary_num]
+                print 'Final destination:', end
+                print 'Distance: ', get_euclidean_distance(end, clicks[-1])
+                cv2.circle(map_campus,end,6,(0,0,255),-1)
+                itinerary_num += 1
+                user_responses.append(clicks[-1])
+                print
+                print 'Good job! Next Itinerary!'
+                print '------'
+                # Save results
+                cv2.imwrite('iter'+str(itinerary_num)+'.png', map_campus);
+
+            elif len(clicks) > len(path_parens[itinerary_num]):
+                color = (255,255,255)
+                # Reload image
+                map_campus = cv2.imread('ass3-campus.pgm', 1)
+                cv2.imshow('Columbia Campus Map', map_campus)
+                start = S_LIST[itinerary_num]
+                # print new start
+                cv2.circle(map_campus,start,6,(0,255,0),-1)
+                print_instructions()
 
         else: # Cloud Ambiguity
             # Function to test ALL clouds for largest/smallest
@@ -472,9 +494,10 @@ def measure_building(cnt, area, print_rect=False):
     cx = x+(w/2)
     cy = y+(h/2)
     centroid = (cx, cy)
-    cv2.circle(map_campus, centroid, 3, (255,255,0), -1)
+
+    # DRAW CENTROIDS!
+    # cv2.circle(map_campus, centroid, 3, (255,255,0), -1)
     # To draw a circle, you need its center coordinates and radius
-    cv2.circle(map_campus, centroid, 3, (255,255,0), -1)
     # print ' Center of Mass:', centroid
 
     rect_area = w*h
@@ -1256,7 +1279,7 @@ def is_near(s,t,draw=False):
         s = buildings[s]
         t = buildings[t]
 
-    shift = 30 # Empirically chosen
+    shift = 15 # Empirically chosen
     s_points = get_near_points(s,shift)
     t_points = get_near_points(t,shift)
 
@@ -1404,7 +1427,7 @@ def generate_paths(graph):
         for j in xrange(len(path)-1):
             s = path[j]
             t = path[j+1]
-            text = step_guidance(s,t,True,True)
+            text = step_guidance(s,t,True) # True)
             path_parens[i].append(text)
             text = step_guidance(s,t,False)
             path_no_parens[i].append(text)
@@ -1489,14 +1512,17 @@ def get_euclidean_distance(source,target):
         s = buildings[source]
         x1 = s['centroid'][0]
         y1 = s['centroid'][1]
-
     else:
         x1 = source[0]
         y1 = source[1]
 
-    t = buildings[target]
-    x2 = t['centroid'][0]
-    y2 = t['centroid'][1]
+    if (type(target) == int):
+        t = buildings[target]
+        x2 = t['centroid'][0]
+        y2 = t['centroid'][1]
+    else:
+        x2 = target[0]
+        y2 = target[1]
 
     base = abs(x1-x2)
     height = abs(y1-y2)
@@ -1581,11 +1607,13 @@ def step_guidance(s,t,parens,name=False):
     if e_table[s][t]:
         if count == 0:
             text += 'EAST'
+            count += 1
         else:
             text == ' and EAST'
     elif e_table[t][s] or w_table[s][t]:
         if count == 0:
             text += 'WEST'
+            count += 1
         else:
             text += ' and WEST'
     # if count == 0:
@@ -1635,7 +1663,7 @@ def terminal_guidance(start,target):
     # print text
     return text
 
-def print_instructions(parens_first=True):
+def print_all_instructions(parens_first=True):
     global path_parens, path_no_parens
 
     if parens_first:
@@ -1657,6 +1685,30 @@ def print_instructions(parens_first=True):
         print '\nITINERARY ' + str(i+5)
         print '------'
         itinerary = secondhalf[i+4]
+        for step in itinerary:
+            print step
+            print '------'
+
+def print_instructions(parens_first=True):
+    global path_parens, path_no_parens
+
+    if parens_first:
+        firsthalf = path_parens
+        secondhalf = path_no_parens
+    else:
+        firsthalf = path_no_parens
+        secondhalf = path_parens
+
+    print '\nITINERARY ' + str(itinerary_num+1)
+    print '------'
+
+    if itinerary_num < 4:
+        itinerary = firsthalf[itinerary_num]
+        for step in itinerary:
+            print step
+            print '------'
+    else:
+        itinerary = secondhalf[itinerary_num+1]
         for step in itinerary:
             print step
             print '------'
@@ -1685,12 +1737,19 @@ def main():
     # paths = generate_paths()
     # print 'Graph', graph
     # dijkstra(graph,'0','22')
-    print_instructions(parens_first=True)
+    # print_all_instructions(parens_first=True)
 
     # Step 3. Source and Target Description and User Interface
     cv2.namedWindow('Columbia Campus Map')
     cv2.setMouseCallback('Columbia Campus Map', click_event)
     print "\nShowing image...\n"
+
+    # Step 4.
+    print '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
+    start = S_LIST[itinerary_num]
+    # print start
+    cv2.circle(map_campus,start,6,(0,255,0),-1)
+    print_instructions()
 
     # print buildings
     # cv2.waitKey(0)
