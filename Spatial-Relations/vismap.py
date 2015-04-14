@@ -65,6 +65,7 @@ path_parens = []
 path_no_parens = []
 itinerary_num = 0
 user_responses = []
+counter = 0
 
 # ============================================================
 # User Interface
@@ -72,33 +73,44 @@ user_responses = []
 
 # mouse callback function
 def click_event(event,x,y,flags,param):
-    global ix,iy,drawing,mode,click_count,color,itinerary_num,map_campus
+    global ix,iy,drawing,mode,click_count,color,itinerary_num,map_campus,counter
 
     if event == cv2.EVENT_LBUTTONDOWN:
 
         drawing = True
         ix,iy = x,y
-        # ix, iy = intercept_click(ix,iy)
         clicks.append((ix,iy))
+        # counter += 1
+        # ix, iy = intercept_click(ix,iy)
 
         if mode == True: # User tests
             change_color() # and increment click count
-            print 'Clicked location: ({},{})'.format(ix,iy)
-            # print 'Click count:', len(clicks)
-            if len(clicks) == len(path_parens[itinerary_num])-1:
+            # print 'iter num: ', itinerary_num
+            # print 'counter', counter
+            # print '<len(path_parens[itinerary_num])', len(path_parens[itinerary_num])
+            # print '==len(path_parens[itinerary_num]-1)', len(path_parens[itinerary_num])-1
+            # print '>len(path_parens[itinerary_num])', len(path_parens[itinerary_num])
+            if counter < len(path_parens[itinerary_num]):
+                print 'Clicked location: ({},{})'.format(ix,iy)
+                counter += 1
+                # print 'Click count:', len(clicks)
+            if counter == len(path_parens[itinerary_num])-1:
                 end = G_LIST[itinerary_num]
                 print 'Final destination:', end
+                clicks.append((ix,iy))
+                counter += 1
                 print 'Distance: ', get_euclidean_distance(end, clicks[-1])
                 cv2.circle(map_campus,end,6,(0,0,255),-1)
                 itinerary_num += 1
                 user_responses.append(clicks[-1])
                 print
-                print 'Good job! Next Itinerary!'
+                print 'Good job! Next itinerary! Click any white space to begin.'
                 print '------'
                 # Save results
                 cv2.imwrite('iter'+str(itinerary_num)+'.png', map_campus);
-
-            elif len(clicks) > len(path_parens[itinerary_num]):
+            elif counter > len(path_parens[itinerary_num]):
+                # Reset counter
+                counter = 0
                 color = (255,255,255)
                 # Reload image
                 map_campus = cv2.imread('ass3-campus.pgm', 1)
@@ -1309,24 +1321,24 @@ def is_near(s,t,draw=False):
 def transitive_reduce(n_table, s_table, e_table, w_table, near_table):
     """Output should use building names rather than numbers"""
     # TODO: Uncomment these and explain
-    # for t in range(0, num_buildings):
-    #     for s in range(0, num_buildings):
-    #         if n_table[s][t]:
-    #             for u in range(0, num_buildings):
-    #                 if n_table[t][u]:
-    #                     n_table[s][u] = False
-    #         if s_table[s][t]:
-    #             for u in range(0, num_buildings):
-    #                 if s_table[t][u]:
-    #                     s_table[s][u] = False
-    #         if w_table[s][t]:
-    #             for u in range(0, num_buildings):
-    #                 if w_table[t][u]:
-    #                     w_table[s][u] = False
-    #         if e_table[s][t]:
-    #             for u in range(0, num_buildings):
-    #                 if e_table[t][u]:
-    #                     e_table[s][u] = False
+    for t in range(0, num_buildings):
+        for s in range(0, num_buildings):
+            if n_table[s][t]:
+                for u in range(0, num_buildings):
+                    if n_table[t][u]:
+                        n_table[s][u] = False
+            if s_table[s][t]:
+                for u in range(0, num_buildings):
+                    if s_table[t][u]:
+                        s_table[s][u] = False
+            if w_table[s][t]:
+                for u in range(0, num_buildings):
+                    if w_table[t][u]:
+                        w_table[s][u] = False
+            if e_table[s][t]:
+                for u in range(0, num_buildings):
+                    if e_table[t][u]:
+                        e_table[s][u] = False
 
     # If t is north of s we no longer need to say s is south of t
     # Similarly, east west relationships can be inferred
@@ -1585,7 +1597,7 @@ def is_inside(idx):
     x = building['centroid'][0]
     y = building['centroid'][1]
     pixel = int(map_labeled[y][x])-1
-    if pixel is 0:
+    if pixel is -1:
         return False
     else:
         return True
@@ -1657,13 +1669,15 @@ def terminal_guidance(start,target):
             text += 'WEST'
         else:
             text += ' and WEST'
+    if is_inside(target):
+        text += ' within the building'
     text += '.'
     # print 'EAST:', is_east(s,t), e_table[s][t]
     # print 'WEST:', is_west(s,t), e_table[t][s], w_table[s][t]
     # print text
     return text
 
-def print_all_instructions(parens_first=True):
+def print_all_instructions(parens_first=False):
     global path_parens, path_no_parens
 
     if parens_first:
@@ -1708,7 +1722,7 @@ def print_instructions(parens_first=True):
             print step
             print '------'
     else:
-        itinerary = secondhalf[itinerary_num+1]
+        itinerary = secondhalf[itinerary_num]
         for step in itinerary:
             print step
             print '------'
@@ -1737,7 +1751,10 @@ def main():
     # paths = generate_paths()
     # print 'Graph', graph
     # dijkstra(graph,'0','22')
-    # print_all_instructions(parens_first=True)
+    print_all_instructions(parens_first=False)
+
+    for path in path_parens:
+        print len(path)
 
     # Step 3. Source and Target Description and User Interface
     cv2.namedWindow('Columbia Campus Map')
