@@ -58,6 +58,10 @@ pix = 2 # Number of pixels to check in each direction for cloud generation
 # S8G8: Lawn ^- Low
 S_LIST = [(8,320),(35,4),(78,477),(232,285),(132,443),(52,398),(203,160),(135,369)]
 G_LIST = [(205,51),(137,291),(257,374),(36,178),(88,68),(134,97),(143,37),(172,212)]
+
+# S_LIST = [(132,443),(135,369),(8,320),(35,4),(232,285),(52,398),(203,160),(78,477)]
+# G_LIST = [(88,68),(172,212),(205,51),(137,291),(36,178),(134,97),(143,37),(172,212),(205,51),(137,291),(257,374)]
+
 paths = [] # Will contain all the sequences of instructions for each 8 paths
 path_parens = []
 path_no_parens = []
@@ -307,7 +311,7 @@ def describe_size(building, max_area):
     elif ratio > 0.4: # cutoff at Journalism & Furnald
         return 'large'
     elif ratio > 0.16: # cutoff at Philosophy
-        return 'midsized'
+        return 'medium'
     elif ratio > 0.1: # cutoff Earl Hall
         return 'small'
     else:
@@ -370,7 +374,7 @@ def describe_shape(building,draw_points=False):
     elif (corners_count == 3 and midpoints_count == 2):
         descriptions.append('L-shaped')
     elif (corners_count == 2 and midpoints_count == 4):
-        descriptions.append('almost rectangular')
+        descriptions.append('T-shaped')
     else:
         descriptions.append('irregularly shaped')
 
@@ -547,7 +551,7 @@ def find_extrema():
                 bldg2 = buildings[jdx]
                 if (idx != jdx) and (characteristic in tuple(bldg2['description'])):
                     count += 1
-            if count is 0 and characteristic != 'almost rectangular' and characteristic != 'southernmost':
+            if count is 0 and characteristic != 'T-shaped' and characteristic != 'southernmost':
                 # 'Found extrema!', characteristic
                 extrema = [characteristic]
                 bldg1['description'] = extrema
@@ -619,7 +623,7 @@ def analyze_where(buildings):
     count += print_table(near_table, num_buildings)
     print 'Total count:', count
 
-    n_table, s_table, e_table, w_table, near_table = transitive_reduce(n_table, s_table, e_table, w_table, near_table)
+    # n_table, s_table, e_table, w_table, near_table = transitive_reduce(n_table, s_table, e_table, w_table, near_table)
 
     print 'After transitive reduction...'
     print 'North relationships:'
@@ -857,9 +861,16 @@ def is_near(s,t,draw=False):
         s = buildings[s]
         t = buildings[t]
 
-    shift = 15 # Empirically chosen
-    s_points = get_near_points(s,shift)
-    t_points = get_near_points(t,shift)
+    w = s['xywh'][2]
+    h = s['xywh'][3]
+    s_shift = min(w,h)/2
+
+    w = t['xywh'][2]
+    h = t['xywh'][3]
+    t_shift = min(w,h)/2
+
+    s_points = get_near_points(s,s_shift)
+    t_points = get_near_points(t,t_shift)
 
     s1,s2,s3,s4,s0 = unpack(s_points)
     t1,t2,t3,t4,t0 = unpack(t_points)
@@ -1001,10 +1012,11 @@ def click_event(event,x,y,flags,param):
             # print '==len(path_parens[itinerary_num]-1)', len(path_parens[itinerary_num])-1
             # print '>len(path_parens[itinerary_num])', len(path_parens[itinerary_num])
             if counter < len(path_parens[itinerary_num]):
-                print 'Clicked location: ({},{})'.format(ix,iy)
+                # print 'Clicked location: ({},{})'.format(ix,iy)
                 counter += 1
                 # print 'Click count:', len(clicks)
             if counter == len(path_parens[itinerary_num])-1:
+                print 'Clicked location: ({},{})'.format(ix,iy)
                 end = G_LIST[itinerary_num]
                 print 'Final destination:', end
                 clicks.append((ix,iy))
@@ -1014,11 +1026,14 @@ def click_event(event,x,y,flags,param):
                 itinerary_num += 1
                 user_responses.append(clicks[-1])
                 print
-                print 'Good job! Next itinerary! Click any white space to begin.'
-                print '------'
+                if itinerary_num < len(S_LIST)-1:
+                    print 'Good job! Next itinerary! Click any white space to begin.'
+                    print '------'
+                elif itinerary_num == len(S_LIST)-1:
+                    print "Good job! You're done!"
                 # Save results
-                cv2.imwrite('iter'+str(itinerary_num)+'.png', map_campus);
-            elif counter > len(path_parens[itinerary_num]):
+                cv2.imwrite('iter'+str(itinerary_num)+'.png', map_campus)
+            elif counter > len(path_parens[itinerary_num]) and itinerary_num < len(S_LIST):
                 # Reset counter
                 counter = 0
                 color = (255,255,255)
@@ -1410,6 +1425,16 @@ def generate_paths(graph):
         path_no_parens[i].append(path_ends[i])
 
     print 'Paths', paths
+    iternum = 0
+    for path in paths:
+        iternum += 1
+        print 'S%dG%d' %(iternum, iternum)
+        print 'Path:',
+        for idx in path:
+            if idx is path[-1]:
+                print buildings[idx]['name']
+            else:
+                print buildings[idx]['name']+',',
     # print 'Paths (parens):', path_parens
     # print 'Paths (no parens):', path_no_parens
     # print 'Path endings:', path_ends
@@ -1541,38 +1566,14 @@ def first_step(start,target,parens,name=False):
     else:
         text = 'You are outside. Go to the nearby building that is '
 
-    s = buildings[start]
-    t = buildings[target]
+    text += adjust_directions(start, target, inside)
 
-    if is_north(s,t): # north of s is t
-        if inside:
-            text += 'SOUTH'
-        else:
-            text += 'NORTH'
-    elif is_south(s,t):
-        if inside:
-            text += 'NORTH'
-        else:
-            text += 'SOUTH'
-    if is_east(s,t):
-        if inside:
-            text += 'WEST'
-        else:
-            text += 'EAST'
-    elif is_west(s,t):
-        if inside:
-            text += 'EAST'
-        else:
-            text += 'WEST'
     if not inside:
         if parens:
             text += ' (%s)' %what_description(target)
         if name:
             text += ' <%s>' %buildings[target]['name']
-
     text += '.'
-    # print 'EAST:', is_east(s,t), e_table[s][t]
-    # print 'WEST:', is_west(s,t), e_table[t][s], w_table[s][t]
     # print text
     return text
 
@@ -1612,43 +1613,48 @@ def step_guidance(s,t,parens,name=False):
             text += ' <%s>' %buildings[t]['name']
 
     text += '.'
-    # print 'EAST:', is_east(s,t), e_table[s][t]
-    # print 'WEST:', is_west(s,t), e_table[t][s], w_table[s][t]
     # print text
     return text
 
 def terminal_guidance(start,target):
-    if is_inside(target):
+    # start = last index in the path
+    inside = is_inside(start)
+    if inside:
         text = 'Your final destination is inside this building. Go '
     else:
         text = 'Your final destination is outside near this building. Go '
-
-    s = buildings[start]
-    t = buildings[target]
-
-    count = 0
-    if is_north(s,t): # north of s is t
-        text += 'NORTH'
-        count += 1
-    elif is_south(s,t):
-        text += 'SOUTH'
-        count += 1
-    if is_east(s,t):
-        if count == 0:
-            text += 'EAST'
-        else:
-            text == ' and EAST'
-    elif is_west(s,t):
-        if count == 0:
-            text += 'WEST'
-        else:
-            text += ' and WEST'
-    if is_inside(target):
+    text += adjust_directions(start,target,False)
+    if inside:
         text += ' within the building'
     text += '.'
-    # print 'EAST:', is_east(s,t), e_table[s][t]
-    # print 'WEST:', is_west(s,t), e_table[t][s], w_table[s][t]
     # print text
+    return text
+
+def adjust_directions(start,target, adjust):
+    s = buildings[start]
+    t = buildings[target]
+    text = ''
+    # text += s['name'] + '-' + t['']
+    if is_north(s,t): # north of s is t
+        if adjust:
+            text += 'SOUTH'
+        else:
+            text += 'NORTH'
+    elif is_south(s,t):
+        if adjust:
+            text += 'NORTH'
+        else:
+            text += 'SOUTH'
+    if is_east(s,t):
+        if adjust:
+            text += 'WEST'
+        else:
+            text += 'EAST'
+    elif is_west(s,t):
+        if adjust:
+            text += 'EAST'
+        else:
+            text += 'WEST'
     return text
 
 def print_instructions(parens_first=True):
@@ -1722,6 +1728,7 @@ def main():
     graph = generate_graph()
     generate_paths(graph)
     # print_all_instructions(parens_first=False)
+    print_all_instructions(parens_first=True)
     # for path in path_parens:
     #     print len(path)
 
