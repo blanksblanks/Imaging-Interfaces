@@ -1,0 +1,18 @@
+    for t in range(0, num_buildings):
+        for s in range(0, num_buildings):
+            if n_table[s][t]:
+                for u in range(0, num_buildings):
+                    if n_table[t][u]:
+                        n_table[s][u] = False
+            if s_table[s][t]:
+                for u in range(0, num_buildings):
+                    if s_table[t][u]:
+                        s_table[s][u] = False
+            if w_table[s][t]:
+                for u in range(0, num_buildings):
+                    if w_table[t][u]:
+                        w_table[s][u] = False
+            if e_table[s][t]:
+                for u in range(0, num_buildings):
+                    if e_table[t][u]:
+                        e_table[s][u] = False

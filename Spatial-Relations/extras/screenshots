@@ -1,0 +1,5 @@
+defaults write com.apple.screencapture disable-shadow -bool true
+killall SystemUIServer
+
+set to false to re-enable
+

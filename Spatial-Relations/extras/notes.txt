@@ -1,0 +1,105 @@
+First part: describe how you determined each feature that you used. Give examples.
+Second part: talk about how you defined “near” and about how you pruned. Output all the surviving relations.
+Third part: talk about your clouds, and pictures of the largest/smallest clouds, show clouds for three interesting paths. Parentheses for describing them. Justify how you picked the paths.
+Fourth part: talk about which search algorithm used, talk about ambiguity - picking between paths, output the experiments
+
+
+
+load:
+map_binary = cv2.imread()
+map_labeled = cv2.imread()
+map_labels = readLabels()
+
+optional:
+map_h = len(map)
+map_w = len(map[0])
+num_structs
+
+print_what:
+for i in xrange(num_structs):
+    print struct_num[i], ':', struct_name[i]
+    print struct_center[i]
+    print struct_area[i]
+    print struct_mbr[i]
+    print struct_descr[i]
+
+analyze_map:
+    find struct_num
+    find struct_name
+    find struct_center
+    find struct_area
+    find struct_mbr
+
+optional:
+    perimeter
+    aspect ratio = w/h
+    10/1 = very wide/long
+    1/10 = very narrow/tall
+    square needs safety/tolerance and to fill mbr
+
+describe_structs:
+
+find_size:
+    is_colossal:
+    is_large:
+    is_middling:
+    is_small:
+    is_miniscule:
+    max, min, average area, cutoff
+
+find_shape:
+    is_Lshaped:
+    is_Cshaped:
+    is_Ishaped:
+    is_cross:
+    is_square:
+    is_curved:
+    is_irregular:
+    is_symmetric: (optional)
+
+find_orientation:
+    is_NSoriented:
+    is_EWoriented:
+    is_central:
+    is_onborder:
+
+[dictionary where key is descrip, value is int]
+find_extremas:
+    smallest:
+    largest:
+    northermost:
+    southernmost:
+    easternmost:
+    westernmost:
+
+
+Point: Describe directions on Columbia campus and the way in which you do it is...
+1. "What"
+- choose your own vocabulary
+- if you make this too easy, the rest gets too hard, ping pong back and forth
+- how you describe the what and where, find out how to make each better)
+- suggested list of description (don't have to use any of them, optional)
+- start writing descriptions yourself - what do you favor? what seems relatively unique? only one building has a hole
+2. "Where": N S E W Near (simplest, required)
+- how to do the inference?
+- each of the 27th buildings can be related to each other in 27 different ways
+- sweep over the image or list of center of gravity of the buildings
+- transitive reduction: does not give unique results
+- heuristic approach to transitive reduction
+3 "Source, Target": click and expand to say that point is going to be in relationships to all the other buildings
+- 28 by 28 graph
+4. Generate paths (validate?): as a whole
+- Do your friends find the way? Binary answer: win/lose
+
+
+Questions:
+- Do we only click on buildings?
+- Can be in/out, say near which buildings
+- Too hard to say how to get around
+- Do we care about entrances when generating paths and walking through walls?
+- To determine a path, need to determine a series of points
+- Can use shortest path algorithm with equal weight
+- Not asking for optimal path, asking for most easily interpreted path
+- Compute likelihood of direction being followed (optional, extra credit) - say, two buildings that look similar
+- Full description (do it heuristically)
+- If you notice the spatial distance between the Source and Target are small, can I just say go North? Rather than describing everything and taking a roundabout route
